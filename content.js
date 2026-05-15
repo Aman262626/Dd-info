@@ -350,6 +350,259 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + units[i];
   }
 
+  /* ── Security Scanner ── */
+  function analyzeSecurity() {
+    const results = [];
+    const isHttps = window.location.protocol === "https:";
+    results.push({ pass: isHttps, text: isHttps ? "Site uses HTTPS (secure connection)" : "Site uses HTTP (not secure!)" });
+
+    // Mixed content check
+    const mixedContent = [];
+    document.querySelectorAll("img[src^='http:'],script[src^='http:'],link[href^='http:']").forEach((el) => {
+      if (isHttps) mixedContent.push(el.tagName + ": " + (el.src || el.href));
+    });
+    if (isHttps) {
+      results.push(mixedContent.length === 0
+        ? { pass: true, text: "No mixed content detected" }
+        : { pass: false, text: mixedContent.length + " mixed content items found (HTTP resources on HTTPS page)" });
+    }
+
+    // Check for common security headers via meta tags
+    const csp = document.querySelector("meta[http-equiv='Content-Security-Policy']");
+    results.push(csp
+      ? { pass: true, text: "Content-Security-Policy found (via meta)" }
+      : { pass: "warn", text: "No Content-Security-Policy meta tag" });
+
+    const xframe = document.querySelector("meta[http-equiv='X-Frame-Options']");
+    if (xframe) results.push({ pass: true, text: "X-Frame-Options set" });
+
+    // External script analysis
+    const externalScripts = [...document.querySelectorAll("script[src]")].map((s) => s.src);
+    const thirdPartyScripts = externalScripts.filter((s) => {
+      try { return new URL(s).hostname !== window.location.hostname; } catch (_) { return false; }
+    });
+    results.push({ pass: "warn", text: thirdPartyScripts.length + " third-party scripts loaded" });
+
+    // Inline scripts
+    const inlineScripts = document.querySelectorAll("script:not([src])");
+    results.push(inlineScripts.length <= 5
+      ? { pass: true, text: inlineScripts.length + " inline scripts" }
+      : { pass: "warn", text: inlineScripts.length + " inline scripts (may increase XSS risk)" });
+
+    // Forms check
+    const insecureForms = document.querySelectorAll("form[action^='http:']");
+    if (insecureForms.length > 0) {
+      results.push({ pass: false, text: insecureForms.length + " form(s) submit to insecure HTTP URL" });
+    }
+
+    // Password fields check
+    const pwdFields = document.querySelectorAll("input[type='password']");
+    if (pwdFields.length > 0 && !isHttps) {
+      results.push({ pass: false, text: "Password field on non-HTTPS page!" });
+    }
+
+    // SRI check on scripts
+    const scriptsWithSRI = [...document.querySelectorAll("script[src][integrity]")].length;
+    const scriptsTotal = externalScripts.length;
+    if (scriptsTotal > 0) {
+      results.push(scriptsWithSRI > 0
+        ? { pass: true, text: scriptsWithSRI + "/" + scriptsTotal + " scripts have SRI integrity" }
+        : { pass: "warn", text: "No scripts use Subresource Integrity (SRI)" });
+    }
+
+    const passed = results.filter((r) => r.pass === true).length;
+    const total = results.length;
+    const score = Math.round((passed / total) * 100);
+
+    return { results, score, mixedContent: mixedContent.slice(0, 10), thirdPartyScripts: thirdPartyScripts.slice(0, 15) };
+  }
+
+  /* ── Cookie & Tracker Detector ── */
+  function detectCookiesAndTrackers() {
+    // Cookies
+    const cookieStr = document.cookie || "";
+    const cookies = cookieStr ? cookieStr.split(";").map((c) => c.trim()).filter(Boolean) : [];
+    const cookieList = cookies.map((c) => {
+      const [name] = c.split("=");
+      return { name: name.trim(), value: c.substring(c.indexOf("=") + 1).substring(0, 50) };
+    });
+
+    // Known trackers detection
+    const trackerSignatures = [
+      { name: "Google Analytics", test: () => !!window.ga || !!window.gtag || !!document.querySelector("script[src*='google-analytics.com'],script[src*='googletagmanager.com']") },
+      { name: "Google Tag Manager", test: () => !!window.google_tag_manager || !!document.querySelector("script[src*='googletagmanager.com/gtm']") },
+      { name: "Facebook Pixel", test: () => !!window.fbq || !!document.querySelector("script[src*='connect.facebook.net']") },
+      { name: "Hotjar", test: () => !!window.hj || !!document.querySelector("script[src*='hotjar.com']") },
+      { name: "Mixpanel", test: () => !!window.mixpanel || !!document.querySelector("script[src*='mixpanel.com']") },
+      { name: "Segment", test: () => !!window.analytics || !!document.querySelector("script[src*='segment.com']") },
+      { name: "Amplitude", test: () => !!window.amplitude || !!document.querySelector("script[src*='amplitude.com']") },
+      { name: "Intercom", test: () => !!window.Intercom || !!document.querySelector("script[src*='intercom.io']") },
+      { name: "Drift", test: () => !!window.drift || !!document.querySelector("script[src*='drift.com']") },
+      { name: "Crisp", test: () => !!window.$crisp || !!document.querySelector("script[src*='crisp.chat']") },
+      { name: "Tawk.to", test: () => !!window.Tawk_API || !!document.querySelector("script[src*='tawk.to']") },
+      { name: "Clarity", test: () => !!window.clarity || !!document.querySelector("script[src*='clarity.ms']") },
+      { name: "Pinterest Tag", test: () => !!window.pintrk || !!document.querySelector("script[src*='pintrk']") },
+      { name: "LinkedIn Insight", test: () => !!window._linkedin_data_partner_ids || !!document.querySelector("script[src*='snap.licdn.com']") },
+      { name: "Twitter Pixel", test: () => !!window.twq || !!document.querySelector("script[src*='static.ads-twitter.com']") },
+      { name: "TikTok Pixel", test: () => !!window.ttq || !!document.querySelector("script[src*='analytics.tiktok.com']") },
+      { name: "Heap Analytics", test: () => !!window.heap || !!document.querySelector("script[src*='heap-analytics']") },
+      { name: "FullStory", test: () => !!window.FS || !!document.querySelector("script[src*='fullstory.com']") },
+      { name: "Sentry", test: () => !!window.Sentry || !!document.querySelector("script[src*='sentry.io']") },
+      { name: "Cloudflare", test: () => !!document.querySelector("script[src*='cloudflare']") },
+    ];
+
+    const detectedTrackers = [];
+    trackerSignatures.forEach((sig) => {
+      try { if (sig.test()) detectedTrackers.push(sig.name); } catch (_) {}
+    });
+
+    // LocalStorage and SessionStorage item counts
+    let localStorageCount = 0;
+    let sessionStorageCount = 0;
+    try { localStorageCount = localStorage.length; } catch (_) {}
+    try { sessionStorageCount = sessionStorage.length; } catch (_) {}
+
+    return {
+      cookies: cookieList.slice(0, 30),
+      cookieCount: cookies.length,
+      trackers: detectedTrackers,
+      localStorageCount,
+      sessionStorageCount,
+    };
+  }
+
+  /* ── Accessibility Checker ── */
+  function checkAccessibility() {
+    const issues = [];
+
+    // Images without alt
+    const imgNoAlt = document.querySelectorAll("img:not([alt])");
+    const imgEmptyAlt = document.querySelectorAll("img[alt='']");
+    if (imgNoAlt.length > 0) issues.push({ severity: "error", text: imgNoAlt.length + " image(s) missing alt attribute" });
+    if (imgEmptyAlt.length > 0) issues.push({ severity: "warn", text: imgEmptyAlt.length + " image(s) with empty alt (decorative?)" });
+
+    // Missing form labels
+    const inputs = document.querySelectorAll("input:not([type='hidden']):not([type='submit']):not([type='button']),textarea,select");
+    let unlabeled = 0;
+    inputs.forEach((input) => {
+      const id = input.id;
+      const hasLabel = id && document.querySelector("label[for='" + id + "']");
+      const wrappedInLabel = input.closest("label");
+      const hasAriaLabel = input.getAttribute("aria-label") || input.getAttribute("aria-labelledby");
+      if (!hasLabel && !wrappedInLabel && !hasAriaLabel) unlabeled++;
+    });
+    if (unlabeled > 0) issues.push({ severity: "error", text: unlabeled + " form input(s) without labels" });
+    else if (inputs.length > 0) issues.push({ severity: "pass", text: "All form inputs have labels" });
+
+    // Heading hierarchy
+    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")];
+    const headingLevels = headings.map((h) => parseInt(h.tagName[1]));
+    let skippedLevels = false;
+    for (let i = 1; i < headingLevels.length; i++) {
+      if (headingLevels[i] - headingLevels[i - 1] > 1) { skippedLevels = true; break; }
+    }
+    if (skippedLevels) issues.push({ severity: "warn", text: "Heading levels are skipped (bad hierarchy)" });
+    else if (headings.length > 0) issues.push({ severity: "pass", text: "Heading hierarchy is correct" });
+
+    // Language attribute
+    const lang = document.documentElement.lang;
+    issues.push(lang
+      ? { severity: "pass", text: "HTML lang attribute is set (" + lang + ")" }
+      : { severity: "error", text: "Missing HTML lang attribute" });
+
+    // ARIA landmarks
+    const landmarks = document.querySelectorAll("[role='main'],main,[role='navigation'],nav,[role='banner'],header,[role='contentinfo'],footer");
+    issues.push(landmarks.length > 0
+      ? { severity: "pass", text: landmarks.length + " ARIA landmarks/semantic elements found" }
+      : { severity: "warn", text: "No ARIA landmarks or semantic HTML5 elements found" });
+
+    // Tab index misuse
+    const badTabIndex = document.querySelectorAll("[tabindex]:not([tabindex='0']):not([tabindex='-1'])");
+    if (badTabIndex.length > 0) issues.push({ severity: "warn", text: badTabIndex.length + " element(s) with positive tabindex (disrupts tab order)" });
+
+    // Link text
+    const emptyLinks = document.querySelectorAll("a:not([aria-label])");
+    let emptyLinkCount = 0;
+    emptyLinks.forEach((a) => { if (!a.textContent.trim() && !a.querySelector("img[alt]")) emptyLinkCount++; });
+    if (emptyLinkCount > 0) issues.push({ severity: "error", text: emptyLinkCount + " link(s) with no text or aria-label" });
+
+    // Button text
+    const buttons = document.querySelectorAll("button");
+    let emptyButtons = 0;
+    buttons.forEach((b) => {
+      if (!b.textContent.trim() && !b.getAttribute("aria-label") && !b.querySelector("img[alt],svg[aria-label]")) emptyButtons++;
+    });
+    if (emptyButtons > 0) issues.push({ severity: "warn", text: emptyButtons + " button(s) without accessible text" });
+
+    // Contrast - basic check (font size < 14px with low opacity)
+    const smallText = document.querySelectorAll("p,span,a,li,td,th,label");
+    let lowContrastSuspects = 0;
+    for (let i = 0; i < Math.min(smallText.length, 100); i++) {
+      const style = window.getComputedStyle(smallText[i]);
+      const color = style.color;
+      const bg = style.backgroundColor;
+      if (color && bg && color === bg) lowContrastSuspects++;
+    }
+    if (lowContrastSuspects > 0) issues.push({ severity: "warn", text: lowContrastSuspects + " element(s) may have zero contrast" });
+
+    const errors = issues.filter((i) => i.severity === "error").length;
+    const warns = issues.filter((i) => i.severity === "warn").length;
+    const passes = issues.filter((i) => i.severity === "pass").length;
+    const total = errors + warns + passes;
+    const score = total > 0 ? Math.round((passes / total) * 100) : 0;
+
+    return { issues, score, errors, warns, passes };
+  }
+
+  /* ── Link Checker & Page Structure ── */
+  function analyzeStructure() {
+    // Links
+    const allLinks = [...document.querySelectorAll("a[href]")];
+    const hostname = window.location.hostname;
+    let internal = 0, external = 0, hash = 0, mailto = 0, tel = 0;
+    const externalDomains = new Set();
+
+    allLinks.forEach((a) => {
+      const href = a.getAttribute("href") || "";
+      if (href.startsWith("#")) hash++;
+      else if (href.startsWith("mailto:")) mailto++;
+      else if (href.startsWith("tel:")) tel++;
+      else {
+        try {
+          const url = new URL(href, window.location.href);
+          if (url.hostname === hostname) internal++;
+          else { external++; externalDomains.add(url.hostname); }
+        } catch (_) { internal++; }
+      }
+    });
+
+    // Headings structure
+    const headings = [...document.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((h) => ({
+      tag: h.tagName,
+      text: h.textContent.trim().substring(0, 60),
+    }));
+
+    // Page structure info
+    const structure = {
+      doctype: document.doctype ? "<!DOCTYPE " + document.doctype.name + ">" : "Missing",
+      domElements: document.querySelectorAll("*").length,
+      iframes: document.querySelectorAll("iframe").length,
+      forms: document.querySelectorAll("form").length,
+      tables: document.querySelectorAll("table").length,
+      videos: document.querySelectorAll("video").length,
+      audios: document.querySelectorAll("audio").length,
+      canvases: document.querySelectorAll("canvas").length,
+      svgs: document.querySelectorAll("svg").length,
+    };
+
+    return {
+      links: { total: allLinks.length, internal, external, hash, mailto, tel },
+      externalDomains: [...externalDomains].slice(0, 20),
+      headings: headings.slice(0, 30),
+      structure,
+    };
+  }
+
   /* ── Main analysis function ── */
   function analyzeWebsite() {
     const techStack = [];
@@ -411,6 +664,10 @@
       downloadResources: collectDownloadResources(),
       seo: analyzeSEO(),
       performance: analyzePerformance(),
+      security: analyzeSecurity(),
+      tracking: detectCookiesAndTrackers(),
+      accessibility: checkAccessibility(),
+      pageStructure: analyzeStructure(),
     };
   }
 

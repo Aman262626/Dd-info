@@ -5,7 +5,7 @@
 }
 
 body {
-  width: 440px;
+  width: 480px;
   max-height: 600px;
   overflow-y: auto;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -192,6 +192,7 @@ body::-webkit-scrollbar-thumb { background: #4338ca; border-radius: 3px; }
 /* Stats Grid */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .stats-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .stat-item {
   text-align: center; padding: 8px 4px;
   background: #16162a; border-radius: 8px; border: 1px solid #2d2d44;

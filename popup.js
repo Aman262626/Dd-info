@@ -79,6 +79,9 @@
     renderStats(data.stats);
     renderSEO(data.seo);
     renderPerformance(data.performance);
+    renderSecurity(data.security, data.tracking);
+    renderAccessibility(data.accessibility);
+    renderPageStructure(data.pageStructure);
   }
 
   /* ═══ SITE INFO ═══ */
@@ -262,6 +265,128 @@
       });
     } else {
       tipsContainer.innerHTML = '<p class="muted">No tips available</p>';
+    }
+  }
+
+  /* ═══ SECURITY & TRACKING ═══ */
+  function renderSecurity(security, tracking) {
+    if (!security) return;
+
+    // Security score
+    const scoreEl = $("#sec-score-val");
+    const circleEl = $("#sec-score-circle");
+    const labelEl = $("#sec-score-label");
+    scoreEl.textContent = security.score;
+    if (security.score >= 80) { circleEl.classList.add("good"); labelEl.textContent = "Secure"; }
+    else if (security.score >= 50) { circleEl.classList.add("ok"); labelEl.textContent = "Moderate"; }
+    else { circleEl.classList.add("bad"); labelEl.textContent = "Vulnerable"; }
+
+    // Security checks
+    const checksContainer = $("#sec-checks");
+    checksContainer.innerHTML = "";
+    security.results.forEach((check) => {
+      const cls = check.pass === true ? "pass" : (check.pass === "warn" ? "warn" : "fail");
+      const icon = check.pass === true ? "\u2714" : (check.pass === "warn" ? "\u26a0" : "\u2718");
+      const el = document.createElement("div");
+      el.className = "seo-check " + cls;
+      el.innerHTML = '<span class="check-icon">' + icon + '</span><span class="check-text">' + escapeHtml(check.text) + "</span>";
+      checksContainer.appendChild(el);
+    });
+
+    // Tracking data
+    if (tracking) {
+      $("#cookie-count").textContent = tracking.cookieCount;
+      $("#tracker-count").textContent = tracking.trackers.length;
+      $("#storage-count").textContent = tracking.localStorageCount + tracking.sessionStorageCount;
+
+      const trackerList = $("#tracker-list");
+      trackerList.innerHTML = "";
+      if (tracking.trackers.length > 0) {
+        tracking.trackers.forEach((t) => {
+          const tag = document.createElement("span");
+          tag.className = "tag tech";
+          tag.textContent = t;
+          trackerList.appendChild(tag);
+        });
+      } else {
+        trackerList.innerHTML = '<span class="tag empty">No trackers detected</span>';
+      }
+
+      const cookieList = $("#cookie-list");
+      cookieList.innerHTML = "";
+      if (tracking.cookies.length > 0) {
+        tracking.cookies.slice(0, 10).forEach((c) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name">' + escapeHtml(c.name) + "</span><span class=\"meta-value\">" + escapeHtml(truncate(c.value, 40)) + "</span>";
+          cookieList.appendChild(item);
+        });
+      }
+    }
+  }
+
+  /* ═══ ACCESSIBILITY ═══ */
+  function renderAccessibility(a11y) {
+    if (!a11y) return;
+
+    const scoreEl = $("#a11y-score-val");
+    const circleEl = $("#a11y-score-circle");
+    const labelEl = $("#a11y-score-label");
+    scoreEl.textContent = a11y.score;
+    if (a11y.score >= 80) { circleEl.classList.add("good"); labelEl.textContent = "Good"; }
+    else if (a11y.score >= 50) { circleEl.classList.add("ok"); labelEl.textContent = "Needs Work"; }
+    else { circleEl.classList.add("bad"); labelEl.textContent = "Poor"; }
+
+    const checksContainer = $("#a11y-checks");
+    checksContainer.innerHTML = "";
+    a11y.issues.forEach((issue) => {
+      const cls = issue.severity === "pass" ? "pass" : (issue.severity === "warn" ? "warn" : "fail");
+      const icon = issue.severity === "pass" ? "\u2714" : (issue.severity === "warn" ? "\u26a0" : "\u2718");
+      const el = document.createElement("div");
+      el.className = "seo-check " + cls;
+      el.innerHTML = '<span class="check-icon">' + icon + '</span><span class="check-text">' + escapeHtml(issue.text) + "</span>";
+      checksContainer.appendChild(el);
+    });
+  }
+
+  /* ═══ PAGE STRUCTURE ═══ */
+  function renderPageStructure(ps) {
+    if (!ps) return;
+
+    // Links
+    $("#link-internal").textContent = ps.links.internal;
+    $("#link-external").textContent = ps.links.external;
+    $("#link-total").textContent = ps.links.total;
+
+    const domainsContainer = $("#external-domains");
+    domainsContainer.innerHTML = "";
+    if (ps.externalDomains.length > 0) {
+      ps.externalDomains.forEach((d) => {
+        const tag = document.createElement("span");
+        tag.className = "tag font";
+        tag.textContent = d;
+        domainsContainer.appendChild(tag);
+      });
+    }
+
+    // Structure stats
+    $("#struct-elements").textContent = ps.structure.domElements;
+    $("#struct-iframes").textContent = ps.structure.iframes;
+    $("#struct-forms").textContent = ps.structure.forms;
+
+    // Headings
+    const headingsList = $("#headings-list");
+    headingsList.innerHTML = "";
+    if (ps.headings.length > 0) {
+      ps.headings.forEach((h) => {
+        const item = document.createElement("div");
+        item.className = "meta-item";
+        const indent = (parseInt(h.tag[1]) - 1) * 12;
+        item.innerHTML = '<span class="meta-name" style="min-width:30px;padding-left:' + indent + 'px">' + h.tag + '</span><span class="meta-value">' + escapeHtml(truncate(h.text, 50)) + "</span>";
+        headingsList.appendChild(item);
+      });
+    } else {
+      headingsList.innerHTML = '<div class="meta-item"><span class="meta-value">No headings found</span></div>';
     }
   }
 
