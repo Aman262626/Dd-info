@@ -15,7 +15,7 @@ A Chrome extension that analyzes any website and lets you download its source co
 
 ## Installation
 
-### From Source (Developer Mode)
+### Chrome (Desktop)
 
 1. Download or clone this repository
 2. Open Chrome and navigate to `chrome://extensions/`
@@ -23,6 +23,28 @@ A Chrome extension that analyzes any website and lets you download its source co
 4. Click **Load unpacked**
 5. Select the `Dd-info` folder
 6. The extension icon will appear in your toolbar
+
+### Kiwi Browser (Android)
+
+Kiwi Browser supports Chrome extensions on Android!
+
+1. Download the extension as a ZIP file from this repository
+2. Open Kiwi Browser on your Android device
+3. Go to `kiwi://extensions`
+4. Enable **Developer mode**
+5. Tap **"Load"** or **"+(from .zip/.crx/.user.js)"**
+6. Select the downloaded ZIP file
+7. The extension will be installed and ready to use
+
+> **Tip:** You can also load the unpacked folder if you have file manager access.
+
+### Other Chromium Browsers
+
+This extension works on any Chromium-based browser that supports Manifest V3:
+- **Brave** — `brave://extensions/`
+- **Edge** — `edge://extensions/`
+- **Opera** — `opera://extensions/`
+- **Vivaldi** — `vivaldi://extensions/`
 
 ## Usage
 
