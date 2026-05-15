@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Dd-info - Website Inspector & Source Downloader",
-  "version": "1.0.0",
-  "description": "Analyze any website - get tech stack, fonts, colors, meta info and download source code to build similar sites.",
+  "name": "Dd-info - Website Inspector & AI Assistant",
+  "version": "2.0.0",
+  "description": "Analyze any website - tech stack, SEO, performance, AI chatbot, and source code download.",
   "permissions": ["activeTab", "scripting"],
   "action": {
     "default_popup": "popup.html",

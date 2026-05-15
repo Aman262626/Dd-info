@@ -197,6 +197,159 @@
     return { css, js, images, inlineCSS, inlineJS };
   }
 
+  /* ── SEO Analysis ── */
+  function analyzeSEO() {
+    const checks = [];
+    const title = document.title;
+    const descMeta = document.querySelector("meta[name='description']");
+    const desc = descMeta ? descMeta.getAttribute("content") : "";
+    const h1s = document.querySelectorAll("h1");
+    const canonicalLink = document.querySelector("link[rel='canonical']");
+    const ogTitle = document.querySelector("meta[property='og:title']");
+    const ogDesc = document.querySelector("meta[property='og:description']");
+    const ogImage = document.querySelector("meta[property='og:image']");
+    const twitterCard = document.querySelector("meta[name='twitter:card']");
+    const viewport = document.querySelector("meta[name='viewport']");
+    const robots = document.querySelector("meta[name='robots']");
+    const favicon = document.querySelector("link[rel='icon'],link[rel='shortcut icon']");
+    const lang = document.documentElement.lang;
+    const altImages = document.querySelectorAll("img:not([alt]),img[alt='']");
+    const allImages = document.querySelectorAll("img");
+    const https = window.location.protocol === "https:";
+
+    // Title checks
+    if (title && title.length > 0) {
+      if (title.length >= 30 && title.length <= 60) checks.push({ pass: true, text: "Title tag is good length (" + title.length + " chars)" });
+      else if (title.length < 30) checks.push({ pass: "warn", text: "Title is too short (" + title.length + " chars, aim for 30-60)" });
+      else checks.push({ pass: "warn", text: "Title is too long (" + title.length + " chars, aim for 30-60)" });
+    } else {
+      checks.push({ pass: false, text: "Missing title tag" });
+    }
+
+    // Description checks
+    if (desc && desc.length > 0) {
+      if (desc.length >= 120 && desc.length <= 160) checks.push({ pass: true, text: "Meta description is good length (" + desc.length + " chars)" });
+      else if (desc.length < 120) checks.push({ pass: "warn", text: "Meta description is short (" + desc.length + " chars, aim for 120-160)" });
+      else checks.push({ pass: "warn", text: "Meta description is long (" + desc.length + " chars, aim for 120-160)" });
+    } else {
+      checks.push({ pass: false, text: "Missing meta description" });
+    }
+
+    // H1 check
+    if (h1s.length === 1) checks.push({ pass: true, text: "Single H1 tag found" });
+    else if (h1s.length === 0) checks.push({ pass: false, text: "No H1 tag found" });
+    else checks.push({ pass: "warn", text: "Multiple H1 tags found (" + h1s.length + ")" });
+
+    // Canonical
+    checks.push(canonicalLink ? { pass: true, text: "Canonical URL is set" } : { pass: false, text: "Missing canonical URL" });
+
+    // Open Graph
+    checks.push(ogTitle ? { pass: true, text: "OG Title is set" } : { pass: false, text: "Missing og:title" });
+    checks.push(ogDesc ? { pass: true, text: "OG Description is set" } : { pass: false, text: "Missing og:description" });
+    checks.push(ogImage ? { pass: true, text: "OG Image is set" } : { pass: "warn", text: "Missing og:image" });
+    checks.push(twitterCard ? { pass: true, text: "Twitter Card is set" } : { pass: "warn", text: "Missing twitter:card" });
+
+    // Technical
+    checks.push(viewport ? { pass: true, text: "Viewport meta is set (mobile-friendly)" } : { pass: false, text: "Missing viewport meta tag" });
+    checks.push(favicon ? { pass: true, text: "Favicon is set" } : { pass: "warn", text: "Missing favicon" });
+    checks.push(lang ? { pass: true, text: "HTML lang attribute is set (" + lang + ")" } : { pass: false, text: "Missing HTML lang attribute" });
+    checks.push(https ? { pass: true, text: "Using HTTPS" } : { pass: false, text: "Not using HTTPS" });
+
+    // Image alt texts
+    if (allImages.length > 0) {
+      if (altImages.length === 0) checks.push({ pass: true, text: "All images have alt text" });
+      else checks.push({ pass: "warn", text: altImages.length + " of " + allImages.length + " images missing alt text" });
+    }
+
+    // Robots
+    if (robots) {
+      const content = robots.getAttribute("content") || "";
+      if (content.includes("noindex")) checks.push({ pass: "warn", text: "Page is set to noindex" });
+      else checks.push({ pass: true, text: "Page is indexable" });
+    }
+
+    // Score
+    const total = checks.length;
+    const passed = checks.filter((c) => c.pass === true).length;
+    const score = Math.round((passed / total) * 100);
+
+    // OG data
+    const ogData = {
+      title: ogTitle ? ogTitle.getAttribute("content") : "—",
+      description: ogDesc ? ogDesc.getAttribute("content") : "—",
+      image: ogImage ? ogImage.getAttribute("content") : "—",
+      twitterCard: twitterCard ? twitterCard.getAttribute("content") : "—",
+      canonical: canonicalLink ? canonicalLink.getAttribute("href") : "—",
+    };
+
+    return { checks, score, ogData };
+  }
+
+  /* ── Performance Analysis ── */
+  function analyzePerformance() {
+    const perf = {};
+    try {
+      const timing = performance.timing || {};
+      const nav = performance.getEntriesByType("navigation")[0] || {};
+
+      perf.loadTime = nav.loadEventEnd ? Math.round(nav.loadEventEnd - nav.startTime) : (timing.loadEventEnd && timing.navigationStart ? timing.loadEventEnd - timing.navigationStart : 0);
+      perf.domReady = nav.domContentLoadedEventEnd ? Math.round(nav.domContentLoadedEventEnd - nav.startTime) : (timing.domContentLoadedEventEnd && timing.navigationStart ? timing.domContentLoadedEventEnd - timing.navigationStart : 0);
+
+      const resources = performance.getEntriesByType("resource");
+      perf.resourceCount = resources.length;
+
+      // Resource breakdown by type
+      const breakdown = { css: 0, js: 0, img: 0, font: 0, other: 0 };
+      const sizes = { css: 0, js: 0, img: 0, font: 0, other: 0 };
+      resources.forEach((r) => {
+        const size = r.transferSize || r.encodedBodySize || 0;
+        if (r.initiatorType === "link" || r.name.match(/\.css/)) { breakdown.css++; sizes.css += size; }
+        else if (r.initiatorType === "script" || r.name.match(/\.js/)) { breakdown.js++; sizes.js += size; }
+        else if (r.initiatorType === "img" || r.name.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)/)) { breakdown.img++; sizes.img += size; }
+        else if (r.name.match(/\.(woff|woff2|ttf|eot|otf)/)) { breakdown.font++; sizes.font += size; }
+        else { breakdown.other++; sizes.other += size; }
+      });
+
+      perf.breakdown = breakdown;
+      perf.sizes = sizes;
+      perf.totalSize = Object.values(sizes).reduce((a, b) => a + b, 0);
+
+      // Tips
+      const tips = [];
+      if (perf.loadTime > 3000) tips.push({ pass: false, text: "Page loads slowly (" + (perf.loadTime / 1000).toFixed(1) + "s). Consider optimizing." });
+      else tips.push({ pass: true, text: "Page loads quickly (" + (perf.loadTime / 1000).toFixed(1) + "s)" });
+
+      if (breakdown.js > 20) tips.push({ pass: "warn", text: "Too many JS files (" + breakdown.js + "). Consider bundling." });
+      if (breakdown.css > 10) tips.push({ pass: "warn", text: "Too many CSS files (" + breakdown.css + "). Consider combining." });
+      if (sizes.img > 2 * 1024 * 1024) tips.push({ pass: "warn", text: "Large image payload (" + formatBytes(sizes.img) + "). Compress images." });
+      if (perf.totalSize > 5 * 1024 * 1024) tips.push({ pass: false, text: "Total page size is large (" + formatBytes(perf.totalSize) + ")" });
+      else tips.push({ pass: true, text: "Total page size is reasonable (" + formatBytes(perf.totalSize) + ")" });
+
+      if (!document.querySelector("script[async],script[defer]") && document.querySelectorAll("script[src]").length > 3) {
+        tips.push({ pass: "warn", text: "Consider using async/defer on script tags" });
+      }
+
+      perf.tips = tips;
+    } catch (_) {
+      perf.loadTime = 0;
+      perf.domReady = 0;
+      perf.resourceCount = 0;
+      perf.breakdown = {};
+      perf.sizes = {};
+      perf.totalSize = 0;
+      perf.tips = [];
+    }
+    return perf;
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + units[i];
+  }
+
   /* ── Main analysis function ── */
   function analyzeWebsite() {
     const techStack = [];
@@ -256,6 +409,8 @@
       },
       html: document.documentElement.outerHTML,
       downloadResources: collectDownloadResources(),
+      seo: analyzeSEO(),
+      performance: analyzePerformance(),
     };
   }
 
