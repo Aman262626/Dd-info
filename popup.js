@@ -1950,13 +1950,19 @@
 
     btn.addEventListener("click", async () => {
       if (!siteData) return;
-      const serverUrl = ($("#host-server-url") || {}).value || "";
+      let serverUrl = ($("#host-server-url") || {}).value || "";
       const siteName = ($("#host-site-name") || {}).value || "";
       const status = $("#host-status");
 
       if (!serverUrl) {
         if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Server URL daalo pehle!"; }
         return;
+      }
+
+      // Auto-add https:// if missing
+      serverUrl = serverUrl.trim();
+      if (!/^https?:\/\//i.test(serverUrl)) {
+        serverUrl = "https://" + serverUrl;
       }
 
       // Save URL for next time
@@ -2070,7 +2076,11 @@
           if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Error: " + (result.error || "Upload failed"); }
         }
       } catch (err) {
-        if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Failed: " + err.message; }
+        let errMsg = err.message || "Unknown error";
+        if (errMsg.includes("Failed to fetch")) {
+          errMsg = "Server connect nahi hua. Check karo: 1) URL sahi hai? 2) Server deployed hai? 3) CORS allowed hai?";
+        }
+        if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = errMsg; }
       }
       btn.disabled = false;
     });
