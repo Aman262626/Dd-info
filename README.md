@@ -1,6 +1,20 @@
-# Dd-info — Website Inspector & Complete Source Cloner
+# Dd-info — Website Inspector & Working Clone Builder
 
-A Chrome extension that analyzes any website and lets you download a **complete clone** of its source code — every UI element, button, font, color, animation, and style — so you can learn from it and build similar sites.
+A Chrome extension that analyzes any website and lets you download a **fully working clone** — all CSS, JS, images, fonts downloaded locally with paths rewritten so you can open `index.html` directly in your browser and see the exact same website.
+
+## Working Clone (v5.0 — NEW)
+
+**One-click Working Clone** — Downloads EVERYTHING the website uses and rewrites all paths so the clone works locally:
+
+- All CSS files downloaded + `url()` paths inside CSS rewritten to local fonts/images
+- All JS files downloaded + script src paths rewritten
+- All images (including srcset responsive images) downloaded + img src paths rewritten
+- All font files (including Google Fonts) downloaded + font paths rewritten
+- Favicons, SVGs, background images all bundled
+- Google Fonts CSS downloaded + font files extracted and bundled locally
+- CDN resources (Bootstrap, jQuery, Tailwind, etc.) detected and included
+- `<base>` tag added as fallback for any remaining external resources
+- **Result: Open `index.html` in browser → Website works locally!**
 
 ## Features
 
