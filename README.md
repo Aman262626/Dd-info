@@ -35,8 +35,29 @@ A Chrome extension that analyzes any website and lets you download a **complete 
 - **Computed Styles** — Extract computed styles for headers, navs, sections, and key elements
 - **Media Queries** — Extract all responsive breakpoints
 - **CSS Gradients** — Extract all gradient definitions used on the page
+- **Typography Map** — Extract font sizes, weights, families, line-heights, letter-spacing for every element type
+- **Shadows** — Extract all box-shadow and text-shadow values as CSS
+- **Border Styles** — Extract all border styles and border-radius values
+- **Navigation Structure** — Export nav menus as HTML + JSON with link hierarchy and dropdown detection
+- **Table Data** — Export all tables as CSV + JSON files
+- **Image Inventory** — Complete image map with dimensions, alt text, srcset, lazy-loading status
+- **Z-Index Stack** — Map all positioned elements with z-index values
+- **Data Attributes** — Export all custom `data-*` attributes with usage counts
+- **Social Links** — Detect and export all social media profile links (Facebook, Twitter, Instagram, LinkedIn, YouTube, GitHub, TikTok, etc.)
+- **Text Content** — Export all visible page text organized by section
+- **Schema/JSON-LD** — Extract all structured data (Schema.org, JSON-LD)
+- **Scroll Behaviors** — Document scroll snap, overflow, and scroll behavior properties
 - **Select All / Deselect All** — Quick toggle for download options
 - **Progress Bar** — Real-time download progress indicator
+
+### Clone Details Tab (NEW)
+- **Typography Map Viewer** — Browse font sizes, weights, and families for every element type
+- **Navigation Menu Viewer** — See all nav links and their structure
+- **Social Links Tags** — Quick view of all detected social media links
+- **Image Inventory Stats** — Total images, images with alt text, lazy-loaded count
+- **Shadows & Effects Panel** — Browse all box-shadow and text-shadow values
+- **Z-Index Stack Panel** — Visual stacking order of positioned elements
+- **Data Attributes Panel** — Browse all custom data-* attributes and their usage
 
 ## Installation
 
@@ -106,8 +127,22 @@ website_complete_clone.zip/
 ├── forms/
 │   ├── forms.html          # Form structures in HTML
 │   └── forms.json          # Form data in JSON
+├── tables/
+│   ├── table_0.csv         # Table data as CSV
+│   └── tables.json         # All tables as JSON
+├── content/
+│   └── text-content.md     # Page text organized by sections
 └── structure/
     ├── layout-map.json     # DOM hierarchy structure
+    ├── navigation.html     # Nav menus as HTML
+    ├── navigation.json     # Nav structure as JSON
+    ├── image-inventory.json # Image map with dimensions & alt
+    ├── z-index-map.json    # Z-index stacking order
+    ├── data-attributes.json # Custom data-* attributes
+    ├── social-links.html   # Social media links
+    ├── social-links.json   # Social links as JSON
+    ├── scroll-behaviors.json # Scroll snap & overflow info
+    ├── schema-0.json       # Schema.org / JSON-LD data
     ├── iframes.json        # iframe sources
     └── media-sources.json  # Video/audio sources
 ```
@@ -164,6 +199,18 @@ Dd-info/
    - Computed styles for key layout elements
    - DOM layout structure map
    - iframe source URLs
+   - Typography map (font sizes, weights, line-heights)
+   - Box shadows and text shadows
+   - Border styles and border-radius values
+   - Navigation menu structure with links
+   - Table data for CSV export
+   - Complete image inventory with dimensions and alt text
+   - Z-index stacking map
+   - Custom data-* attributes
+   - Social media profile links
+   - Visible text content by section
+   - Schema.org / JSON-LD structured data
+   - Scroll snap and overflow behaviors
 2. The popup fetches each resource via the browser's fetch API
 3. Everything is bundled into a complete clone ZIP file using JSZip
 4. The ZIP is downloaded with a detailed README summarizing everything

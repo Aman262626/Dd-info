@@ -517,6 +517,276 @@
     return iframes.slice(0, 20);
   }
 
+  /* ── 14. Collect Structured Data (JSON-LD / Schema.org) ── */
+  function collectStructuredData() {
+    const data = [];
+    document.querySelectorAll('script[type="application/ld+json"]').forEach((el) => {
+      try { data.push(JSON.parse(el.textContent)); } catch (_) {}
+    });
+    return data;
+  }
+
+  /* ── 15. Collect Spacing & Typography Map ── */
+  function collectTypography() {
+    const typo = {};
+    const seen = new Set();
+    document.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,a,li,td,th,label,blockquote,figcaption,button").forEach((el) => {
+      if (Object.keys(typo).length > 40) return;
+      const style = getComputedStyle(el);
+      const key = el.tagName.toLowerCase() + (el.className && typeof el.className === "string" ? "." + el.className.trim().split(/\s+/)[0] : "");
+      if (seen.has(key)) return;
+      seen.add(key);
+      typo[key] = {
+        fontSize: style.fontSize,
+        fontWeight: style.fontWeight,
+        fontFamily: style.fontFamily,
+        lineHeight: style.lineHeight,
+        letterSpacing: style.letterSpacing,
+        textTransform: style.textTransform,
+        textDecoration: style.textDecoration,
+        color: style.color,
+        marginTop: style.marginTop,
+        marginBottom: style.marginBottom,
+        paddingTop: style.paddingTop,
+        paddingBottom: style.paddingBottom,
+      };
+    });
+    return typo;
+  }
+
+  /* ── 16. Collect Shadows (box-shadow & text-shadow) ── */
+  function collectShadows() {
+    const boxShadows = [];
+    const textShadows = [];
+    const seenBox = new Set();
+    const seenText = new Set();
+    document.querySelectorAll("body *").forEach((el) => {
+      if (boxShadows.length > 30 && textShadows.length > 20) return;
+      const style = getComputedStyle(el);
+      if (style.boxShadow && style.boxShadow !== "none" && !seenBox.has(style.boxShadow)) {
+        seenBox.add(style.boxShadow);
+        boxShadows.push({ selector: getSelector(el), value: style.boxShadow });
+      }
+      if (style.textShadow && style.textShadow !== "none" && !seenText.has(style.textShadow)) {
+        seenText.add(style.textShadow);
+        textShadows.push({ selector: getSelector(el), value: style.textShadow });
+      }
+    });
+    return { boxShadows, textShadows };
+  }
+
+  /* ── 17. Collect Border Styles ── */
+  function collectBorders() {
+    const borders = [];
+    const seen = new Set();
+    document.querySelectorAll("body *").forEach((el) => {
+      if (borders.length > 40) return;
+      const style = getComputedStyle(el);
+      const border = style.border;
+      const radius = style.borderRadius;
+      if ((border && border !== "0px none rgb(0, 0, 0)" && !seen.has(border + radius))) {
+        seen.add(border + radius);
+        borders.push({
+          selector: getSelector(el),
+          border: border,
+          borderRadius: radius,
+          borderTop: style.borderTop,
+          borderBottom: style.borderBottom,
+          borderLeft: style.borderLeft,
+          borderRight: style.borderRight,
+        });
+      }
+    });
+    return borders;
+  }
+
+  /* ── 18. Collect Navigation Structure ── */
+  function collectNavigation() {
+    const navs = [];
+    document.querySelectorAll("nav,header nav,[role='navigation'],.navbar,.nav,.navigation,.menu").forEach((nav, ni) => {
+      const links = [];
+      nav.querySelectorAll("a").forEach((a) => {
+        links.push({
+          text: a.textContent.trim().substring(0, 50),
+          href: a.getAttribute("href") || "",
+          classes: a.className || "",
+          hasDropdown: !!a.closest(".dropdown,.has-submenu,[data-toggle]") || !!a.nextElementSibling,
+        });
+      });
+      const style = getComputedStyle(nav);
+      navs.push({
+        id: nav.id || ("nav_" + ni),
+        classes: nav.className || "",
+        display: style.display,
+        flexDirection: style.flexDirection,
+        backgroundColor: style.backgroundColor,
+        links,
+      });
+    });
+    return navs;
+  }
+
+  /* ── 19. Collect Table Data ── */
+  function collectTableData() {
+    const tables = [];
+    document.querySelectorAll("table").forEach((table, ti) => {
+      const headers = [];
+      table.querySelectorAll("thead th, thead td, tr:first-child th").forEach((th) => {
+        headers.push(th.textContent.trim());
+      });
+      const rows = [];
+      table.querySelectorAll("tbody tr, tr").forEach((tr) => {
+        if (rows.length > 50) return;
+        const cells = [];
+        tr.querySelectorAll("td,th").forEach((td) => {
+          cells.push(td.textContent.trim().substring(0, 100));
+        });
+        if (cells.length > 0 && cells.some((c) => c)) rows.push(cells);
+      });
+      const style = getComputedStyle(table);
+      tables.push({
+        id: table.id || ("table_" + ti),
+        headers,
+        rows: rows.slice(0, 50),
+        classes: table.className || "",
+        borderCollapse: style.borderCollapse,
+        width: style.width,
+      });
+    });
+    return tables.slice(0, 10);
+  }
+
+  /* ── 20. Collect Image Inventory ── */
+  function collectImageInventory() {
+    const images = [];
+    document.querySelectorAll("img").forEach((img) => {
+      if (images.length > 60) return;
+      images.push({
+        src: img.src || "",
+        alt: img.alt || "",
+        width: img.naturalWidth || img.width || 0,
+        height: img.naturalHeight || img.height || 0,
+        loading: img.loading || "eager",
+        srcset: img.srcset || "",
+        classes: img.className || "",
+        isLazy: img.loading === "lazy" || !!img.dataset.src || !!img.dataset.lazySrc,
+      });
+    });
+    return images;
+  }
+
+  /* ── 21. Collect Z-Index Map ── */
+  function collectZIndexMap() {
+    const zmap = [];
+    document.querySelectorAll("body *").forEach((el) => {
+      if (zmap.length > 30) return;
+      const style = getComputedStyle(el);
+      const z = parseInt(style.zIndex);
+      if (!isNaN(z) && z !== 0 && style.position !== "static") {
+        zmap.push({
+          selector: getSelector(el),
+          zIndex: z,
+          position: style.position,
+          tag: el.tagName.toLowerCase(),
+        });
+      }
+    });
+    zmap.sort((a, b) => b.zIndex - a.zIndex);
+    return zmap;
+  }
+
+  /* ── 22. Collect Custom Data Attributes ── */
+  function collectDataAttributes() {
+    const attrs = {};
+    document.querySelectorAll("[data-*]").forEach((el) => {
+      if (Object.keys(attrs).length > 50) return;
+      for (const key of Object.keys(el.dataset)) {
+        if (!attrs[key]) attrs[key] = { count: 0, examples: [] };
+        attrs[key].count++;
+        if (attrs[key].examples.length < 3) {
+          attrs[key].examples.push(el.dataset[key].substring(0, 50));
+        }
+      }
+    });
+    return attrs;
+  }
+
+  /* ── 23. Collect Social Media Links ── */
+  function collectSocialLinks() {
+    const socialPatterns = [
+      { name: "Facebook", pattern: /facebook\.com|fb\.com|fb\.me/i },
+      { name: "Twitter/X", pattern: /twitter\.com|x\.com/i },
+      { name: "Instagram", pattern: /instagram\.com/i },
+      { name: "LinkedIn", pattern: /linkedin\.com/i },
+      { name: "YouTube", pattern: /youtube\.com|youtu\.be/i },
+      { name: "GitHub", pattern: /github\.com/i },
+      { name: "TikTok", pattern: /tiktok\.com/i },
+      { name: "Pinterest", pattern: /pinterest\.com/i },
+      { name: "Reddit", pattern: /reddit\.com/i },
+      { name: "Discord", pattern: /discord\.gg|discord\.com/i },
+      { name: "Telegram", pattern: /t\.me|telegram\.me/i },
+      { name: "WhatsApp", pattern: /wa\.me|whatsapp\.com/i },
+      { name: "Snapchat", pattern: /snapchat\.com/i },
+      { name: "Twitch", pattern: /twitch\.tv/i },
+      { name: "Medium", pattern: /medium\.com/i },
+      { name: "Dribbble", pattern: /dribbble\.com/i },
+      { name: "Behance", pattern: /behance\.net/i },
+    ];
+    const found = [];
+    document.querySelectorAll("a[href]").forEach((a) => {
+      const href = a.getAttribute("href") || "";
+      for (const sp of socialPatterns) {
+        if (sp.pattern.test(href) && !found.some((f) => f.name === sp.name && f.url === href)) {
+          found.push({ name: sp.name, url: href, text: a.textContent.trim().substring(0, 30) });
+        }
+      }
+    });
+    return found;
+  }
+
+  /* ── 24. Collect Page Text Content ── */
+  function collectTextContent() {
+    const sections = [];
+    document.querySelectorAll("header,main,section,article,aside,footer,.hero,.content,.container").forEach((el) => {
+      if (sections.length > 20) return;
+      const text = el.innerText || el.textContent || "";
+      if (text.trim().length > 10) {
+        sections.push({
+          tag: el.tagName.toLowerCase(),
+          id: el.id || "",
+          classes: el.className && typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 3).join(" ") : "",
+          text: text.trim().substring(0, 500),
+        });
+      }
+    });
+    return sections;
+  }
+
+  /* ── 25. Collect Scroll & Overflow Behaviors ── */
+  function collectScrollBehaviors() {
+    const behaviors = [];
+    document.querySelectorAll("body *").forEach((el) => {
+      if (behaviors.length > 20) return;
+      const style = getComputedStyle(el);
+      const overflow = style.overflow + style.overflowX + style.overflowY;
+      const snapType = style.scrollSnapType;
+      const scrollBehavior = style.scrollBehavior;
+      if ((overflow.includes("scroll") || overflow.includes("auto")) && el.scrollHeight > el.clientHeight + 10) {
+        behaviors.push({
+          selector: getSelector(el),
+          overflow: style.overflow,
+          overflowX: style.overflowX,
+          overflowY: style.overflowY,
+          scrollSnapType: snapType !== "none" ? snapType : "",
+          scrollBehavior: scrollBehavior !== "auto" ? scrollBehavior : "",
+          scrollHeight: el.scrollHeight,
+          clientHeight: el.clientHeight,
+        });
+      }
+    });
+    return behaviors;
+  }
+
   /* ── Helper: generate a CSS selector for an element ── */
   function getSelector(el) {
     if (el.id) return "#" + el.id;
@@ -995,6 +1265,8 @@
         iframes: document.querySelectorAll("iframe").length,
         videos: document.querySelectorAll("video").length,
         audios: document.querySelectorAll("audio").length,
+        tables: document.querySelectorAll("table").length,
+        buttons: document.querySelectorAll("button,a[role='button'],[type='submit'],[type='button']").length,
       },
       html: document.documentElement.outerHTML,
       downloadResources: collectDownloadResources(),
@@ -1011,6 +1283,18 @@
       computedStyles: collectComputedStyles(),
       layoutMap: collectLayoutMap(),
       iframeSources: collectIframeSources(),
+      structuredData: collectStructuredData(),
+      typography: collectTypography(),
+      shadows: collectShadows(),
+      borders: collectBorders(),
+      navigation: collectNavigation(),
+      tableData: collectTableData(),
+      imageInventory: collectImageInventory(),
+      zIndexMap: collectZIndexMap(),
+      dataAttributes: collectDataAttributes(),
+      socialLinks: collectSocialLinks(),
+      textContent: collectTextContent(),
+      scrollBehaviors: collectScrollBehaviors(),
       seo: analyzeSEO(),
       performance: analyzePerformance(),
       security: analyzeSecurity(),

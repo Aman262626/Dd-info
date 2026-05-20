@@ -266,6 +266,8 @@ body::-webkit-scrollbar-thumb { background: #4338ca; border-radius: 3px; }
 .download-status.progress { background: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; }
 
 .stats-grid-extra { grid-template-columns: repeat(4, 1fr); }
+.stats-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.meta-value.url { color: #818cf8; word-break: break-all; font-size: 10px; }
 
 /* ═══ SEO TAB ═══ */
 .seo-score-wrap {

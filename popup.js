@@ -82,6 +82,7 @@
     renderSecurity(data.security, data.tracking);
     renderAccessibility(data.accessibility);
     renderPageStructure(data.pageStructure);
+    renderCloneTab(data);
   }
 
   /* ═══ SITE INFO ═══ */
@@ -103,6 +104,10 @@
     if (stats.svgs !== undefined) $("#stat-svgs").textContent = stats.svgs;
     if (stats.forms !== undefined) $("#stat-forms").textContent = stats.forms;
     if (stats.iframes !== undefined) $("#stat-iframes").textContent = stats.iframes;
+    if (stats.tables !== undefined) $("#stat-tables").textContent = stats.tables;
+    if (stats.buttons !== undefined) $("#stat-buttons").textContent = stats.buttons;
+    if (stats.videos !== undefined) $("#stat-videos").textContent = stats.videos;
+    if (stats.audios !== undefined) $("#stat-audios").textContent = stats.audios;
   }
 
   /* ═══ TECH STACK ═══ */
@@ -391,6 +396,123 @@
       });
     } else {
       headingsList.innerHTML = '<div class="meta-item"><span class="meta-value">No headings found</span></div>';
+    }
+  }
+
+  /* ═══ CLONE TAB ═══ */
+  function renderCloneTab(data) {
+    // Typography
+    if (data.typography) {
+      const typoList = $("#typography-list");
+      typoList.innerHTML = "";
+      const entries = Object.entries(data.typography);
+      if (entries.length > 0) {
+        entries.forEach(([sel, t]) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name" style="min-width:60px">' + escapeHtml(sel) + '</span><span class="meta-value">' + t.fontSize + " / " + t.fontWeight + " / " + truncate(t.fontFamily, 30) + "</span>";
+          typoList.appendChild(item);
+        });
+      } else {
+        typoList.innerHTML = '<p class="muted">No typography data</p>';
+      }
+    }
+
+    // Navigation
+    if (data.navigation) {
+      const navList = $("#navigation-list");
+      navList.innerHTML = "";
+      if (data.navigation.length > 0) {
+        data.navigation.forEach((nav) => {
+          const header = document.createElement("div");
+          header.className = "meta-item";
+          header.innerHTML = '<span class="meta-name" style="color:#a78bfa;font-weight:600">' + escapeHtml(nav.id) + '</span><span class="meta-value">' + nav.links.length + " links</span>";
+          navList.appendChild(header);
+          nav.links.slice(0, 10).forEach((link) => {
+            const item = document.createElement("div");
+            item.className = "meta-item";
+            item.innerHTML = '<span class="meta-name" style="padding-left:12px">' + escapeHtml(truncate(link.text, 25)) + '</span><span class="meta-value url">' + escapeHtml(truncate(link.href, 40)) + "</span>";
+            navList.appendChild(item);
+          });
+        });
+      } else {
+        navList.innerHTML = '<p class="muted">No navigation menus found</p>';
+      }
+    }
+
+    // Social Links
+    if (data.socialLinks) {
+      const socialList = $("#social-links-list");
+      socialList.innerHTML = "";
+      if (data.socialLinks.length > 0) {
+        data.socialLinks.forEach((s) => {
+          const tag = document.createElement("span");
+          tag.className = "tag tech";
+          tag.textContent = s.name;
+          tag.title = s.url;
+          socialList.appendChild(tag);
+        });
+      } else {
+        socialList.innerHTML = '<span class="tag empty">No social links found</span>';
+      }
+    }
+
+    // Image Inventory
+    if (data.imageInventory) {
+      const imgs = data.imageInventory;
+      $("#img-total").textContent = imgs.length;
+      $("#img-with-alt").textContent = imgs.filter((i) => i.alt).length;
+      $("#img-lazy").textContent = imgs.filter((i) => i.isLazy).length;
+    }
+
+    // Shadows
+    if (data.shadows) {
+      const shadowsList = $("#shadows-list");
+      shadowsList.innerHTML = "";
+      const allShadows = [...data.shadows.boxShadows.map((s) => ({ type: "box", ...s })), ...data.shadows.textShadows.map((s) => ({ type: "text", ...s }))];
+      if (allShadows.length > 0) {
+        allShadows.forEach((s) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name">' + s.type + "-shadow</span>" + '<span class="meta-value">' + escapeHtml(truncate(s.value, 60)) + "</span>";
+          shadowsList.appendChild(item);
+        });
+      } else {
+        shadowsList.innerHTML = '<p class="muted">No shadows found</p>';
+      }
+    }
+
+    // Z-Index
+    if (data.zIndexMap) {
+      const zList = $("#zindex-list");
+      zList.innerHTML = "";
+      if (data.zIndexMap.length > 0) {
+        data.zIndexMap.forEach((z) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name" style="color:#fbbf24;min-width:50px">z:' + z.zIndex + '</span><span class="meta-value">' + escapeHtml(z.selector) + " (" + z.position + ")</span>";
+          zList.appendChild(item);
+        });
+      } else {
+        zList.innerHTML = '<p class="muted">No z-index elements found</p>';
+      }
+    }
+
+    // Data Attributes
+    if (data.dataAttributes) {
+      const daList = $("#data-attrs-list");
+      daList.innerHTML = "";
+      const entries = Object.entries(data.dataAttributes);
+      if (entries.length > 0) {
+        entries.forEach(([key, val]) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name">data-' + escapeHtml(key) + '</span><span class="meta-value">' + val.count + "x" + (val.examples[0] ? " — " + escapeHtml(truncate(val.examples[0], 30)) : "") + "</span>";
+          daList.appendChild(item);
+        });
+      } else {
+        daList.innerHTML = '<p class="muted">No data attributes found</p>';
+      }
     }
   }
 
@@ -789,6 +911,134 @@
         zip.file("css/gradients.css", gradCSS);
       }
 
+      // 16. Typography Map
+      if ($("#dl-typography").checked && siteData.typography) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting typography...");
+        let typoCSS = "/* Typography Map extracted by Dd-info */\n\n";
+        Object.entries(siteData.typography).forEach(([sel, t]) => {
+          typoCSS += sel + " {\n";
+          Object.entries(t).forEach(([k, v]) => {
+            if (v && v !== "normal" && v !== "none" && v !== "0px") {
+              typoCSS += "  " + k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase()) + ": " + v + ";\n";
+            }
+          });
+          typoCSS += "}\n\n";
+        });
+        zip.file("css/typography.css", typoCSS);
+      }
+
+      // 17. Shadows
+      if ($("#dl-shadows").checked && siteData.shadows) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting shadows...");
+        let shadowCSS = "/* Shadows extracted by Dd-info */\n\n";
+        siteData.shadows.boxShadows.forEach((s) => {
+          shadowCSS += s.selector + " {\n  box-shadow: " + s.value + ";\n}\n\n";
+        });
+        siteData.shadows.textShadows.forEach((s) => {
+          shadowCSS += s.selector + " {\n  text-shadow: " + s.value + ";\n}\n\n";
+        });
+        if (shadowCSS.length > 50) zip.file("css/shadows.css", shadowCSS);
+      }
+
+      // 18. Borders
+      if ($("#dl-borders").checked && siteData.borders && siteData.borders.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting borders...");
+        let borderCSS = "/* Border Styles extracted by Dd-info */\n\n";
+        siteData.borders.forEach((b) => {
+          borderCSS += b.selector + " {\n";
+          borderCSS += "  border: " + b.border + ";\n";
+          if (b.borderRadius && b.borderRadius !== "0px") borderCSS += "  border-radius: " + b.borderRadius + ";\n";
+          borderCSS += "}\n\n";
+        });
+        zip.file("css/borders.css", borderCSS);
+      }
+
+      // 19. Navigation
+      if ($("#dl-navigation").checked && siteData.navigation && siteData.navigation.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting navigation...");
+        let navHTML = "<!-- Navigation Structure extracted by Dd-info -->\n\n";
+        siteData.navigation.forEach((nav) => {
+          navHTML += '<nav id="' + nav.id + '" style="display:' + nav.display + ";background:" + nav.backgroundColor + '">\n';
+          navHTML += "  <ul>\n";
+          nav.links.forEach((link) => {
+            navHTML += '    <li><a href="' + link.href + '">' + escapeHtml(link.text) + "</a></li>\n";
+          });
+          navHTML += "  </ul>\n</nav>\n\n";
+        });
+        zip.file("structure/navigation.html", navHTML);
+        zip.file("structure/navigation.json", JSON.stringify(siteData.navigation, null, 2));
+      }
+
+      // 20. Tables
+      if ($("#dl-tables").checked && siteData.tableData && siteData.tableData.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting tables...");
+        siteData.tableData.forEach((table, ti) => {
+          let csv = "";
+          if (table.headers.length > 0) csv += table.headers.join(",") + "\n";
+          table.rows.forEach((row) => { csv += row.map((c) => '"' + c.replace(/"/g, '""') + '"').join(",") + "\n"; });
+          zip.file("tables/" + table.id + ".csv", csv);
+        });
+        zip.file("tables/tables.json", JSON.stringify(siteData.tableData, null, 2));
+      }
+
+      // 21. Image Map
+      if ($("#dl-imgmap").checked && siteData.imageInventory && siteData.imageInventory.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Generating image map...");
+        zip.file("structure/image-inventory.json", JSON.stringify(siteData.imageInventory, null, 2));
+      }
+
+      // 22. Z-Index Map
+      if ($("#dl-zindex").checked && siteData.zIndexMap && siteData.zIndexMap.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Mapping z-index stack...");
+        zip.file("structure/z-index-map.json", JSON.stringify(siteData.zIndexMap, null, 2));
+      }
+
+      // 23. Data Attributes
+      if ($("#dl-data-attrs").checked && siteData.dataAttributes) {
+        const daKeys = Object.keys(siteData.dataAttributes);
+        if (daKeys.length > 0) {
+          updateProgress(Math.round((++step / totalSteps) * 100), "Extracting data attributes...");
+          zip.file("structure/data-attributes.json", JSON.stringify(siteData.dataAttributes, null, 2));
+        }
+      }
+
+      // 24. Social Links
+      if ($("#dl-social").checked && siteData.socialLinks && siteData.socialLinks.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting social links...");
+        let socialHTML = "<!-- Social Media Links extracted by Dd-info -->\n<ul>\n";
+        siteData.socialLinks.forEach((s) => {
+          socialHTML += '  <li><a href="' + s.url + '" target="_blank">' + escapeHtml(s.name) + (s.text ? " — " + escapeHtml(s.text) : "") + "</a></li>\n";
+        });
+        socialHTML += "</ul>\n";
+        zip.file("structure/social-links.html", socialHTML);
+        zip.file("structure/social-links.json", JSON.stringify(siteData.socialLinks, null, 2));
+      }
+
+      // 25. Text Content
+      if ($("#dl-text").checked && siteData.textContent && siteData.textContent.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting text content...");
+        let textMD = "# Page Text Content\n\n";
+        siteData.textContent.forEach((sec) => {
+          textMD += "## " + sec.tag.toUpperCase() + (sec.id ? " #" + sec.id : "") + (sec.classes ? " ." + sec.classes : "") + "\n\n";
+          textMD += sec.text + "\n\n---\n\n";
+        });
+        zip.file("content/text-content.md", textMD);
+      }
+
+      // 26. Schema / Structured Data
+      if ($("#dl-schema").checked && siteData.structuredData && siteData.structuredData.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting structured data...");
+        siteData.structuredData.forEach((sd, i) => {
+          zip.file("structure/schema-" + i + ".json", JSON.stringify(sd, null, 2));
+        });
+      }
+
+      // 27. Scroll Behaviors
+      if ($("#dl-scroll").checked && siteData.scrollBehaviors && siteData.scrollBehaviors.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting scroll behaviors...");
+        zip.file("structure/scroll-behaviors.json", JSON.stringify(siteData.scrollBehaviors, null, 2));
+      }
+
       // Enhanced README
       updateProgress(95, "Generating README...");
       let readmeContent = "# Source Clone: " + hostname + "\n\n";
@@ -806,6 +1056,9 @@
       readmeContent += "- `css/computed-styles.css` — Computed styles for key elements\n";
       readmeContent += "- `css/media-queries.css` — Responsive breakpoints\n";
       readmeContent += "- `css/gradients.css` — CSS gradients used on the page\n";
+      readmeContent += "- `css/typography.css` — Typography map (font sizes, weights, families)\n";
+      readmeContent += "- `css/shadows.css` — Box shadows & text shadows\n";
+      readmeContent += "- `css/borders.css` — Border styles & border-radius\n";
       readmeContent += "- `js/` — External + inline JavaScript files\n";
       readmeContent += "- `images/` — Page images\n";
       readmeContent += "- `fonts/` — Font files (woff2, woff, ttf, etc.)\n";
@@ -813,7 +1066,9 @@
       readmeContent += "- `favicons/` — Favicons and web manifest\n";
       readmeContent += "- `bg-images/` — Background images\n";
       readmeContent += "- `forms/` — Form structures (HTML + JSON)\n";
-      readmeContent += "- `structure/` — Layout map, iframes, media sources\n\n";
+      readmeContent += "- `tables/` — Table data (CSV + JSON)\n";
+      readmeContent += "- `content/` — Page text content\n";
+      readmeContent += "- `structure/` — Layout map, navigation, z-index, social links, images, iframes, media, data attrs, scroll behaviors, schema\n\n";
       readmeContent += "## Page Stats\n";
       readmeContent += "- CSS Files: " + siteData.stats.cssFiles + "\n";
       readmeContent += "- JS Files: " + siteData.stats.jsFiles + "\n";
@@ -836,6 +1091,20 @@
           readmeContent += "- `" + mq + "`\n";
         });
       }
+
+      if (siteData.socialLinks && siteData.socialLinks.length > 0) {
+        readmeContent += "\n## Social Links\n";
+        siteData.socialLinks.forEach((s) => {
+          readmeContent += "- [" + s.name + "](" + s.url + ")\n";
+        });
+      }
+
+      readmeContent += "\n## Stats\n";
+      readmeContent += "- Tables: " + (siteData.stats.tables || 0) + "\n";
+      readmeContent += "- Buttons: " + (siteData.stats.buttons || 0) + "\n";
+      readmeContent += "- Videos: " + (siteData.stats.videos || 0) + "\n";
+      readmeContent += "- Audios: " + (siteData.stats.audios || 0) + "\n";
+      readmeContent += "- Iframes: " + (siteData.stats.iframes || 0) + "\n";
 
       zip.file("README.md", readmeContent);
 
