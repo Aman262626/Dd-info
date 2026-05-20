@@ -790,13 +790,14 @@
   /* ── 22. Collect Custom Data Attributes ── */
   function collectDataAttributes() {
     const attrs = {};
-    document.querySelectorAll("[data-*]").forEach((el) => {
+    document.querySelectorAll("body *").forEach((el) => {
       if (Object.keys(attrs).length > 50) return;
+      if (!el.dataset || Object.keys(el.dataset).length === 0) return;
       for (const key of Object.keys(el.dataset)) {
         if (!attrs[key]) attrs[key] = { count: 0, examples: [] };
         attrs[key].count++;
         if (attrs[key].examples.length < 3) {
-          attrs[key].examples.push(el.dataset[key].substring(0, 50));
+          attrs[key].examples.push((el.dataset[key] || "").substring(0, 50));
         }
       }
     });
