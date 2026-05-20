@@ -514,6 +514,101 @@
         daList.innerHTML = '<p class="muted">No data attributes found</p>';
       }
     }
+
+    // Flex & Grid Layouts
+    if (data.flexGridLayouts) {
+      const flex = data.flexGridLayouts.filter((l) => l.type === "flexbox").length;
+      const grid = data.flexGridLayouts.filter((l) => l.type === "grid").length;
+      $("#flexbox-count").textContent = flex;
+      $("#grid-count").textContent = grid;
+    }
+
+    // Link Map
+    if (data.linkMap) {
+      $("#links-internal").textContent = data.linkMap.internal.length;
+      $("#links-external").textContent = data.linkMap.external.length;
+      $("#links-anchors").textContent = data.linkMap.anchors.length;
+      $("#links-mailto").textContent = (data.linkMap.mailto.length + data.linkMap.tel.length);
+    }
+
+    // Icon Classes
+    if (data.iconClasses) {
+      const iconsList = $("#icons-list");
+      iconsList.innerHTML = "";
+      if (data.iconClasses.length > 0) {
+        data.iconClasses.forEach((ic) => {
+          const tag = document.createElement("span");
+          tag.className = "tag icon-tag";
+          tag.textContent = ic.lib + ": " + ic.icon;
+          iconsList.appendChild(tag);
+        });
+      } else {
+        iconsList.innerHTML = '<span class="tag empty">No icon classes found</span>';
+      }
+    }
+
+    // Page Size
+    if (data.pageSize) {
+      $("#page-html-size").textContent = formatBytes(data.pageSize.htmlSize);
+      $("#page-total-size").textContent = formatBytes(data.pageSize.totalTransferred);
+      $("#page-nodes").textContent = data.pageSize.nodeCount;
+    }
+
+    // Spacing Scale
+    if (data.spacingScale) {
+      const spacingList = $("#spacing-list");
+      spacingList.innerHTML = "";
+      const addSection = (title, items) => {
+        if (items.length === 0) return;
+        const header = document.createElement("div");
+        header.className = "meta-item";
+        header.innerHTML = '<span class="meta-name" style="color:#a78bfa;font-weight:600">' + title + "</span>";
+        spacingList.appendChild(header);
+        items.forEach((s) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name" style="padding-left:8px">' + s.value + '</span><span class="meta-value">' + s.count + "x</span>";
+          spacingList.appendChild(item);
+        });
+      };
+      addSection("Margins", data.spacingScale.margins);
+      addSection("Paddings", data.spacingScale.paddings);
+      addSection("Gaps", data.spacingScale.gaps);
+      if (spacingList.children.length === 0) spacingList.innerHTML = '<p class="muted">No spacing data</p>';
+    }
+
+    // Transitions
+    if (data.transitions) {
+      const transList = $("#transitions-list");
+      transList.innerHTML = "";
+      if (data.transitions.length > 0) {
+        data.transitions.forEach((t) => {
+          const item = document.createElement("div");
+          item.className = "meta-item";
+          item.innerHTML = '<span class="meta-name">' + escapeHtml(t.selector) + '</span><span class="meta-value">' + escapeHtml(truncate(t.transition, 50)) + "</span>";
+          transList.appendChild(item);
+        });
+      } else {
+        transList.innerHTML = '<p class="muted">No transitions found</p>';
+      }
+    }
+
+    // OG / Social Preview
+    if (data.socialPreview) {
+      const ogList = $("#og-preview-list");
+      ogList.innerHTML = "";
+      const sp = data.socialPreview;
+      const addMeta = (name, val) => {
+        if (!val) return;
+        const item = document.createElement("div");
+        item.className = "meta-item";
+        item.innerHTML = '<span class="meta-name">' + name + '</span><span class="meta-value">' + escapeHtml(truncate(val, 60)) + "</span>";
+        ogList.appendChild(item);
+      };
+      Object.entries(sp.og).forEach(([k, v]) => addMeta(k, v));
+      Object.entries(sp.twitter).forEach(([k, v]) => addMeta(k, v));
+      if (ogList.children.length === 0) ogList.innerHTML = '<p class="muted">No OG/social meta tags found</p>';
+    }
   }
 
   /* ═══ AI CHAT ═══ */
@@ -1039,6 +1134,142 @@
         zip.file("structure/scroll-behaviors.json", JSON.stringify(siteData.scrollBehaviors, null, 2));
       }
 
+      // 28. Color Palette CSS
+      if ($("#dl-colorpalette").checked && siteData.colorPalette) {
+        const colors = Object.entries(siteData.colorPalette);
+        if (colors.length > 0) {
+          updateProgress(Math.round((++step / totalSteps) * 100), "Generating color palette...");
+          let paletteCSS = "/* Complete Color Palette extracted by Dd-info */\n:root {\n";
+          colors.sort((a, b) => b[1].count - a[1].count).forEach(([color, info], i) => {
+            paletteCSS += "  --color-" + i + ": " + color + "; /* used " + info.count + "x, " + info.usage + " */\n";
+          });
+          paletteCSS += "}\n";
+          zip.file("css/color-palette.css", paletteCSS);
+        }
+      }
+
+      // 29. Flexbox & Grid Layouts
+      if ($("#dl-flexgrid").checked && siteData.flexGridLayouts && siteData.flexGridLayouts.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting flex/grid layouts...");
+        let layoutCSS = "/* Flexbox & Grid Layouts extracted by Dd-info */\n\n";
+        siteData.flexGridLayouts.forEach((l) => {
+          layoutCSS += "/* " + l.type.toUpperCase() + " — " + l.children + " children */\n";
+          layoutCSS += l.selector + " {\n";
+          layoutCSS += "  display: " + l.display + ";\n";
+          if (l.type === "flexbox") {
+            layoutCSS += "  flex-direction: " + l.flexDirection + ";\n";
+            layoutCSS += "  flex-wrap: " + l.flexWrap + ";\n";
+            layoutCSS += "  justify-content: " + l.justifyContent + ";\n";
+            layoutCSS += "  align-items: " + l.alignItems + ";\n";
+          } else {
+            if (l.gridTemplateColumns) layoutCSS += "  grid-template-columns: " + l.gridTemplateColumns + ";\n";
+            if (l.gridTemplateRows && l.gridTemplateRows !== "none") layoutCSS += "  grid-template-rows: " + l.gridTemplateRows + ";\n";
+          }
+          if (l.gap && l.gap !== "normal") layoutCSS += "  gap: " + l.gap + ";\n";
+          layoutCSS += "}\n\n";
+        });
+        zip.file("css/flex-grid-layouts.css", layoutCSS);
+      }
+
+      // 30. Link Map
+      if ($("#dl-linkmap").checked && siteData.linkMap) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Generating link map...");
+        zip.file("structure/link-map.json", JSON.stringify(siteData.linkMap, null, 2));
+        let sitemapXML = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+        siteData.linkMap.internal.forEach((l) => {
+          sitemapXML += "  <url><loc>" + siteData.url.replace(/\/[^/]*$/, "") + l.href + "</loc></url>\n";
+        });
+        sitemapXML += "</urlset>\n";
+        zip.file("structure/sitemap.xml", sitemapXML);
+      }
+
+      // 31. Icon Classes
+      if ($("#dl-icons").checked && siteData.iconClasses && siteData.iconClasses.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting icon classes...");
+        zip.file("structure/icon-classes.json", JSON.stringify(siteData.iconClasses, null, 2));
+      }
+
+      // 32. Page Size Analysis
+      if ($("#dl-pagesize").checked && siteData.pageSize) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Analyzing page size...");
+        zip.file("structure/page-size-analysis.json", JSON.stringify(siteData.pageSize, null, 2));
+      }
+
+      // 33. API Endpoints
+      if ($("#dl-apis").checked && siteData.apiEndpoints && siteData.apiEndpoints.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting API endpoints...");
+        zip.file("structure/api-endpoints.json", JSON.stringify(siteData.apiEndpoints, null, 2));
+      }
+
+      // 34. Storage Keys
+      if ($("#dl-storage").checked && siteData.storageKeys) {
+        const lsKeys = Object.keys(siteData.storageKeys.localStorage);
+        const ssKeys = Object.keys(siteData.storageKeys.sessionStorage);
+        if (lsKeys.length > 0 || ssKeys.length > 0) {
+          updateProgress(Math.round((++step / totalSteps) * 100), "Extracting storage keys...");
+          zip.file("structure/storage-keys.json", JSON.stringify(siteData.storageKeys, null, 2));
+        }
+      }
+
+      // 35. Spacing Scale
+      if ($("#dl-spacing").checked && siteData.spacingScale) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting spacing scale...");
+        let spacingCSS = "/* Spacing Scale extracted by Dd-info */\n:root {\n";
+        spacingCSS += "  /* Margins (most used) */\n";
+        siteData.spacingScale.margins.forEach((s, i) => {
+          spacingCSS += "  --margin-" + i + ": " + s.value + "; /* " + s.count + "x */\n";
+        });
+        spacingCSS += "\n  /* Paddings (most used) */\n";
+        siteData.spacingScale.paddings.forEach((s, i) => {
+          spacingCSS += "  --padding-" + i + ": " + s.value + "; /* " + s.count + "x */\n";
+        });
+        if (siteData.spacingScale.gaps.length > 0) {
+          spacingCSS += "\n  /* Gaps (most used) */\n";
+          siteData.spacingScale.gaps.forEach((s, i) => {
+            spacingCSS += "  --gap-" + i + ": " + s.value + "; /* " + s.count + "x */\n";
+          });
+        }
+        spacingCSS += "}\n";
+        zip.file("css/spacing-scale.css", spacingCSS);
+      }
+
+      // 36. OG / Social Preview
+      if ($("#dl-ogpreview").checked && siteData.socialPreview) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting OG preview...");
+        zip.file("structure/social-preview.json", JSON.stringify(siteData.socialPreview, null, 2));
+        let ogHTML = "<!-- Social/OG Preview Card -->\n<div class='og-preview' style='max-width:500px;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-family:sans-serif'>\n";
+        if (siteData.socialPreview.og["og:image"]) {
+          ogHTML += "  <img src='" + siteData.socialPreview.og["og:image"] + "' style='width:100%;height:auto' />\n";
+        }
+        ogHTML += "  <div style='padding:12px'>\n";
+        ogHTML += "    <h3>" + escapeHtml(siteData.socialPreview.og["og:title"] || siteData.socialPreview.title) + "</h3>\n";
+        ogHTML += "    <p>" + escapeHtml(siteData.socialPreview.og["og:description"] || siteData.socialPreview.description) + "</p>\n";
+        ogHTML += "  </div>\n</div>\n";
+        zip.file("structure/og-preview.html", ogHTML);
+      }
+
+      // 37. DOM Element Inventory
+      if ($("#dl-eleminventory").checked && siteData.elementInventory && siteData.elementInventory.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Generating DOM inventory...");
+        zip.file("structure/element-inventory.json", JSON.stringify(siteData.elementInventory, null, 2));
+      }
+
+      // 38. Transitions
+      if ($("#dl-transitions").checked && siteData.transitions && siteData.transitions.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Extracting transitions...");
+        let transCSS = "/* CSS Transitions extracted by Dd-info */\n\n";
+        siteData.transitions.forEach((t) => {
+          transCSS += t.selector + " {\n  transition: " + t.transition + ";\n}\n\n";
+        });
+        zip.file("css/transitions.css", transCSS);
+      }
+
+      // 39. Canvas Elements
+      if ($("#dl-canvas").checked && siteData.canvasElements && siteData.canvasElements.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Documenting canvas elements...");
+        zip.file("structure/canvas-elements.json", JSON.stringify(siteData.canvasElements, null, 2));
+      }
+
       // Enhanced README
       updateProgress(95, "Generating README...");
       let readmeContent = "# Source Clone: " + hostname + "\n\n";
@@ -1059,6 +1290,10 @@
       readmeContent += "- `css/typography.css` — Typography map (font sizes, weights, families)\n";
       readmeContent += "- `css/shadows.css` — Box shadows & text shadows\n";
       readmeContent += "- `css/borders.css` — Border styles & border-radius\n";
+      readmeContent += "- `css/color-palette.css` — Complete color palette as CSS variables\n";
+      readmeContent += "- `css/flex-grid-layouts.css` — Flexbox & grid layout definitions\n";
+      readmeContent += "- `css/spacing-scale.css` — Spacing scale (margins, paddings, gaps)\n";
+      readmeContent += "- `css/transitions.css` — CSS transition definitions\n";
       readmeContent += "- `js/` — External + inline JavaScript files\n";
       readmeContent += "- `images/` — Page images\n";
       readmeContent += "- `fonts/` — Font files (woff2, woff, ttf, etc.)\n";
@@ -1068,7 +1303,7 @@
       readmeContent += "- `forms/` — Form structures (HTML + JSON)\n";
       readmeContent += "- `tables/` — Table data (CSV + JSON)\n";
       readmeContent += "- `content/` — Page text content\n";
-      readmeContent += "- `structure/` — Layout map, navigation, z-index, social links, images, iframes, media, data attrs, scroll behaviors, schema\n\n";
+      readmeContent += "- `structure/` — Layout map, navigation, z-index, social links, images, iframes, media, data attrs, scroll, schema, link-map, sitemap, icons, page-size, APIs, storage, OG preview, DOM inventory, canvas\n\n";
       readmeContent += "## Page Stats\n";
       readmeContent += "- CSS Files: " + siteData.stats.cssFiles + "\n";
       readmeContent += "- JS Files: " + siteData.stats.jsFiles + "\n";

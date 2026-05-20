@@ -47,10 +47,22 @@ A Chrome extension that analyzes any website and lets you download a **complete 
 - **Text Content** — Export all visible page text organized by section
 - **Schema/JSON-LD** — Extract all structured data (Schema.org, JSON-LD)
 - **Scroll Behaviors** — Document scroll snap, overflow, and scroll behavior properties
+- **Color Palette CSS** — Generate complete color system as CSS variables with usage counts
+- **Flexbox & Grid Layouts** — Extract all flex/grid containers with properties (direction, wrap, gap, columns)
+- **Link Map / Sitemap** — Generate sitemap XML + JSON with internal/external/anchor/mailto/tel links
+- **Icon Classes** — Detect icon library usage (Font Awesome, Material Icons, Bootstrap Icons, Heroicons, Lucide)
+- **Page Size Analysis** — HTML size, total transferred, DOM nodes, resource breakdown by type
+- **API Endpoints** — Detect fetch/XHR/API URLs in inline scripts
+- **Storage Keys** — Capture localStorage and sessionStorage key/value pairs
+- **Spacing Scale** — Extract most-used margins, paddings, and gaps as CSS variables
+- **OG/Social Preview** — Export Open Graph and Twitter card meta tags + generate preview HTML card
+- **DOM Element Inventory** — Count every HTML tag used on the page
+- **CSS Transitions** — Extract all transition property definitions
+- **Canvas/WebGL Elements** — Document canvas elements with dimensions
 - **Select All / Deselect All** — Quick toggle for download options
 - **Progress Bar** — Real-time download progress indicator
 
-### Clone Details Tab (NEW)
+### Clone Details Tab
 - **Typography Map Viewer** — Browse font sizes, weights, and families for every element type
 - **Navigation Menu Viewer** — See all nav links and their structure
 - **Social Links Tags** — Quick view of all detected social media links
@@ -58,6 +70,13 @@ A Chrome extension that analyzes any website and lets you download a **complete 
 - **Shadows & Effects Panel** — Browse all box-shadow and text-shadow values
 - **Z-Index Stack Panel** — Visual stacking order of positioned elements
 - **Data Attributes Panel** — Browse all custom data-* attributes and their usage
+- **Flex & Grid Stats** — Flexbox and CSS Grid container counts
+- **Link Map Stats** — Internal, external, anchor, email/tel link counts
+- **Icon Classes Panel** — Browse detected icon library icons
+- **Page Size Stats** — HTML size, total size, DOM node count
+- **Spacing Scale Panel** — Most-used margins, paddings, and gaps
+- **Transitions Panel** — Browse all CSS transition definitions
+- **OG/Social Preview Panel** — Open Graph and Twitter card meta tags
 
 ## Installation
 
