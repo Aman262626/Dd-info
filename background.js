@@ -25,6 +25,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch((err) => sendResponse({ success: false, error: err.message }));
     return true;
   }
+
+  if (request.action === "fetchHeaders") {
+    fetchResponseHeaders(request.url)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  if (request.action === "checkRobotsSitemap") {
+    checkRobotsSitemap(request.origin)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
 
 async function handleAIChat(apiKey, messages, siteContext) {
@@ -74,4 +88,57 @@ Instructions:
 
   const data = await response.json();
   return data.choices[0].message.content;
+}
+
+async function fetchResponseHeaders(url) {
+  try {
+    const response = await fetch(url, { method: "HEAD", mode: "cors" });
+    const headers = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    return { status: response.status, statusText: response.statusText, headers };
+  } catch (err) {
+    try {
+      const response = await fetch(url, { method: "GET", mode: "cors" });
+      const headers = {};
+      response.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+      return { status: response.status, statusText: response.statusText, headers };
+    } catch (_) {
+      return { status: 0, statusText: "Could not fetch headers", headers: {} };
+    }
+  }
+}
+
+async function checkRobotsSitemap(origin) {
+  const results = { robots: null, sitemap: null };
+
+  try {
+    const robotsResp = await fetch(origin + "/robots.txt", { mode: "cors" });
+    if (robotsResp.ok) {
+      const text = await robotsResp.text();
+      results.robots = { exists: true, content: text.substring(0, 2000), status: robotsResp.status };
+    } else {
+      results.robots = { exists: false, status: robotsResp.status };
+    }
+  } catch (_) {
+    results.robots = { exists: false, status: 0, error: "Could not fetch" };
+  }
+
+  try {
+    const sitemapResp = await fetch(origin + "/sitemap.xml", { mode: "cors" });
+    if (sitemapResp.ok) {
+      const text = await sitemapResp.text();
+      const urlCount = (text.match(/<url>/g) || []).length;
+      results.sitemap = { exists: true, urlCount, status: sitemapResp.status, preview: text.substring(0, 500) };
+    } else {
+      results.sitemap = { exists: false, status: sitemapResp.status };
+    }
+  } catch (_) {
+    results.sitemap = { exists: false, status: 0, error: "Could not fetch" };
+  }
+
+  return results;
 }

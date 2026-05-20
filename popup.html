@@ -12,6 +12,10 @@
       <div class="logo">
         <img src="icons/icon48.png" alt="Dd-info" width="24" height="24">
         <h1>Dd-info</h1>
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+          <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
       </div>
     </header>
 
@@ -257,6 +261,7 @@
           <label class="checkbox-label"><input type="checkbox" id="dl-eleminventory"> DOM Inventory</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-transitions" checked> Transitions</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-canvas"> Canvas</label>
+          <label class="checkbox-label paywall-option"><input type="checkbox" id="dl-remove-paywall" checked> Remove Paywall</label>
         </div>
         <div class="download-actions">
           <button id="select-all-btn" class="btn-small">Select All</button>
@@ -305,6 +310,26 @@
         </h2>
         <div id="og-tags" class="info-grid">
           <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Robots.txt & Sitemap
+        </h2>
+        <div class="stats-grid stats-grid-2" id="robots-sitemap-stats">
+          <div class="stat-item">
+            <span class="stat-value" id="robots-status">—</span>
+            <span class="stat-label">robots.txt</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="sitemap-status">—</span>
+            <span class="stat-label">sitemap.xml</span>
+          </div>
+        </div>
+        <div id="robots-content" class="collapsible-content" style="display:none;margin-top:8px;">
+          <pre id="robots-txt-content" style="font-size:10px;max-height:120px;overflow:auto;background:#16162a;padding:6px;border-radius:4px;color:#94a3b8;white-space:pre-wrap;"></pre>
         </div>
       </section>
     </div>
@@ -484,6 +509,109 @@
         <div id="headings-content" class="collapsible-content" style="display:none;">
           <div id="headings-list" class="meta-list"></div>
         </div>
+      </section>
+
+      <!-- Paywall Detection -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Paywall / Subscription Detection
+        </h2>
+        <div class="stats-grid stats-grid-3" style="margin-bottom:8px;">
+          <div class="stat-item">
+            <span class="stat-value" id="paywall-count">0</span>
+            <span class="stat-label">Paywalls</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="blur-count">0</span>
+            <span class="stat-label">Blurred</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="overlay-count">0</span>
+            <span class="stat-label">Overlays</span>
+          </div>
+        </div>
+        <div id="paywall-status" class="download-status" style="display:none;"></div>
+        <p class="muted" style="margin-top:4px;">Clone download me paywall auto-remove hoga!</p>
+      </section>
+
+      <!-- Color Contrast Checker -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/></svg>
+          Color Contrast (WCAG)
+        </h2>
+        <div class="seo-score-wrap">
+          <div id="contrast-score-circle" class="seo-score-circle">
+            <span id="contrast-score-val">—</span>
+          </div>
+          <span id="contrast-score-label" class="seo-score-label">Analyzing...</span>
+        </div>
+        <div class="stats-grid stats-grid-2" style="margin-top:8px;">
+          <div class="stat-item">
+            <span class="stat-value" id="contrast-aa-fail">0</span>
+            <span class="stat-label">AA Fail</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="contrast-aaa-fail">0</span>
+            <span class="stat-label">AAA Fail</span>
+          </div>
+        </div>
+        <div id="contrast-details" class="collapsible-content" style="display:none;margin-top:8px;">
+          <div id="contrast-list" class="meta-list" style="max-height:150px;"></div>
+        </div>
+        <button id="contrast-toggle-btn" class="btn-small" style="margin-top:6px;">Show Details</button>
+      </section>
+
+      <!-- QR Code Generator -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/></svg>
+          QR Code
+        </h2>
+        <div id="qr-code-container" style="text-align:center;padding:8px;">
+          <canvas id="qr-canvas" width="160" height="160" style="border-radius:8px;background:white;padding:8px;"></canvas>
+          <p class="muted" style="margin-top:6px;">Scan to open this page on mobile</p>
+        </div>
+        <button id="qr-download-btn" class="btn-small" style="width:100%;margin-top:4px;">Download QR Code</button>
+      </section>
+
+      <!-- Wayback Machine -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Wayback Machine
+        </h2>
+        <a id="wayback-link" href="#" target="_blank" class="btn-secondary" style="display:block;text-align:center;text-decoration:none;">View Archived Versions</a>
+        <p class="muted" style="margin-top:4px;">Internet Archive pe is page ki purani copies dekhein</p>
+      </section>
+
+      <!-- Response Headers -->
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="headers-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+          Response Headers
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="headers-content" class="collapsible-content" style="display:none;">
+          <div id="headers-list" class="meta-list" style="max-height:200px;">
+            <p class="muted">Click to load...</p>
+          </div>
+        </div>
+        <button id="load-headers-btn" class="btn-small" style="margin-top:6px;">Load Headers</button>
+      </section>
+
+      <!-- Export Report -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Report
+        </h2>
+        <div style="display:flex;gap:6px;">
+          <button id="export-json-btn" class="btn-small" style="flex:1;">Download JSON</button>
+          <button id="copy-summary-btn" class="btn-small" style="flex:1;">Copy Summary</button>
+        </div>
+        <div id="export-status" class="download-status" style="display:none;margin-top:6px;"></div>
       </section>
 
       <!-- Screenshot moved here -->

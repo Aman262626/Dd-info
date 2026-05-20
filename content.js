@@ -1126,6 +1126,237 @@
     return canvases;
   }
 
+  /* ── 38. Detect Paywall / Subscription Walls ── */
+  function detectPaywalls() {
+    const paywallSelectors = [
+      "[class*='paywall']", "[class*='Paywall']", "[id*='paywall']",
+      "[class*='subscribe-wall']", "[class*='subscription-wall']", "[class*='premium-wall']",
+      "[class*='meter-']", "[id*='meter-']",
+      "[class*='gate']", "[id*='gate']",
+      "[class*='regwall']", "[id*='regwall']",
+      "[class*='piano-']", "[id*='piano-']",
+      "[class*='tp-modal']", "[class*='tp-backdrop']",
+      "[class*='overlay-paywall']", "[class*='modal-paywall']",
+      "[class*='premium-overlay']", "[class*='content-lock']",
+      "[class*='article-lock']", "[class*='locked-content']",
+      "[class*='signin-wall']", "[class*='login-wall']",
+      "[class*='registration-wall']",
+      "[class*='blurred-content']", "[class*='blur-content']",
+      "[class*='truncated-content']",
+      "[class*='metered']", "[class*='pw-']",
+      ".fjs-paywall", ".c-paywall",
+      "[data-paywall]", "[data-subscribe]", "[data-premium]",
+    ];
+
+    const found = [];
+    paywallSelectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        if (found.length > 30) return;
+        found.push({
+          selector: getSelector(el),
+          tag: el.tagName.toLowerCase(),
+          classes: (typeof el.className === "string") ? el.className : "",
+          id: el.id || "",
+          isOverlay: isOverlayElement(el),
+          isBlur: hasBlurEffect(el),
+          innerHTML: el.innerHTML.substring(0, 200),
+        });
+      });
+    });
+
+    // Detect body scroll lock
+    const bodyStyle = getComputedStyle(document.body);
+    const htmlStyle = getComputedStyle(document.documentElement);
+    const scrollLocked = bodyStyle.overflow === "hidden" || htmlStyle.overflow === "hidden" ||
+      bodyStyle.overflowY === "hidden" || htmlStyle.overflowY === "hidden";
+
+    // Detect blurred content sections
+    const blurredElements = [];
+    document.querySelectorAll("body *").forEach((el) => {
+      if (blurredElements.length > 20) return;
+      if (hasBlurEffect(el)) {
+        blurredElements.push({ selector: getSelector(el), tag: el.tagName.toLowerCase() });
+      }
+    });
+
+    // Detect fixed/sticky overlays
+    const overlays = [];
+    document.querySelectorAll("body > div, body > section, body > aside").forEach((el) => {
+      if (overlays.length > 10) return;
+      if (isOverlayElement(el)) {
+        overlays.push({ selector: getSelector(el), tag: el.tagName.toLowerCase(), classes: (typeof el.className === "string") ? el.className : "" });
+      }
+    });
+
+    return {
+      paywallElements: found,
+      scrollLocked,
+      blurredElements,
+      overlays,
+      hasPaywall: found.length > 0 || blurredElements.length > 0 || overlays.length > 0,
+    };
+  }
+
+  function isOverlayElement(el) {
+    const style = getComputedStyle(el);
+    return (style.position === "fixed" || style.position === "sticky") &&
+      (parseInt(style.zIndex) > 100 || style.zIndex === "auto") &&
+      (style.display !== "none") &&
+      (parseFloat(style.opacity) > 0);
+  }
+
+  function hasBlurEffect(el) {
+    const style = getComputedStyle(el);
+    const filter = style.filter || style.webkitFilter || "";
+    return filter.includes("blur") ||
+      (el.className && typeof el.className === "string" && /blur/i.test(el.className));
+  }
+
+  /* ── 39. Clean HTML for Paywall-Free Clone ── */
+  function getCleanedHTML() {
+    const clone = document.documentElement.cloneNode(true);
+
+    // Remove paywall/overlay elements
+    const removeSelectors = [
+      "[class*='paywall']", "[class*='Paywall']", "[id*='paywall']",
+      "[class*='subscribe-wall']", "[class*='subscription-wall']",
+      "[class*='premium-wall']", "[class*='premium-overlay']",
+      "[class*='content-lock']", "[class*='article-lock']",
+      "[class*='signin-wall']", "[class*='login-wall']",
+      "[class*='registration-wall']", "[class*='regwall']",
+      "[class*='piano-']", "[class*='tp-modal']", "[class*='tp-backdrop']",
+      "[class*='modal-paywall']", "[class*='overlay-paywall']",
+      "[data-paywall]", "[data-subscribe]",
+      "[class*='meter-toaster']", "[class*='meter-modal']",
+      "[class*='pw-overlay']",
+    ];
+    removeSelectors.forEach((sel) => {
+      clone.querySelectorAll(sel).forEach((el) => el.remove());
+    });
+
+    // Remove blur effects via inline style override
+    clone.querySelectorAll("*").forEach((el) => {
+      const filter = el.style.filter || el.style.webkitFilter || "";
+      if (filter.includes("blur")) {
+        el.style.filter = "none";
+        el.style.webkitFilter = "none";
+      }
+      // Unlock max-height truncation on article bodies
+      if (el.style.maxHeight && el.style.overflow === "hidden") {
+        const cls = (typeof el.className === "string") ? el.className : "";
+        if (/article|content|post|story|body|text/i.test(cls) || /article|content|post|story/i.test(el.id || "")) {
+          el.style.maxHeight = "none";
+          el.style.overflow = "visible";
+        }
+      }
+    });
+
+    // Add style block to force-remove blur and scroll lock
+    const cleanupStyle = clone.querySelector("head") ? clone.querySelector("head") : clone;
+    const style = document.createElement("style");
+    style.textContent = `
+      /* Dd-info: Paywall/Subscription cleanup */
+      body, html { overflow: auto !important; height: auto !important; position: static !important; }
+      [class*='paywall'], [class*='subscribe-wall'], [class*='premium-overlay'],
+      [class*='content-lock'], [class*='signin-wall'], [class*='login-wall'],
+      [class*='piano-'], [class*='tp-modal'], [class*='tp-backdrop'],
+      [class*='modal-paywall'], [class*='overlay-paywall'],
+      [data-paywall], [data-subscribe] { display: none !important; }
+      [class*='blur'], [class*='truncated'] { filter: none !important; -webkit-filter: none !important; }
+      [class*='article'], [class*='content'], [class*='post'], [class*='story'] {
+        max-height: none !important; overflow: visible !important;
+        -webkit-mask-image: none !important; mask-image: none !important;
+      }
+    `;
+    cleanupStyle.appendChild(style);
+
+    return clone.outerHTML;
+  }
+
+  /* ── 40. Color Contrast Checker (WCAG) ── */
+  function checkColorContrast() {
+    const results = [];
+    const checked = new Set();
+    const elements = document.querySelectorAll("p,span,a,h1,h2,h3,h4,h5,h6,li,td,th,label,button,input,blockquote");
+
+    for (let i = 0; i < Math.min(elements.length, 150); i++) {
+      const el = elements[i];
+      if (!el.textContent.trim()) continue;
+      const style = getComputedStyle(el);
+      const fg = style.color;
+      const bg = getEffectiveBackground(el);
+      if (!fg || !bg) continue;
+
+      const key = fg + "|" + bg;
+      if (checked.has(key)) continue;
+      checked.add(key);
+
+      const fgRGB = parseRGB(fg);
+      const bgRGB = parseRGB(bg);
+      if (!fgRGB || !bgRGB) continue;
+
+      const ratio = contrastRatio(fgRGB, bgRGB);
+      const fontSize = parseFloat(style.fontSize);
+      const isBold = parseInt(style.fontWeight) >= 700 || style.fontWeight === "bold";
+      const isLargeText = fontSize >= 24 || (fontSize >= 18.66 && isBold);
+
+      const aaPass = isLargeText ? ratio >= 3 : ratio >= 4.5;
+      const aaaPass = isLargeText ? ratio >= 4.5 : ratio >= 7;
+
+      if (results.length < 30) {
+        results.push({
+          selector: getSelector(el),
+          text: el.textContent.trim().substring(0, 30),
+          foreground: fg,
+          background: bg,
+          ratio: Math.round(ratio * 100) / 100,
+          fontSize: fontSize,
+          isLargeText,
+          aaPass,
+          aaaPass,
+        });
+      }
+    }
+
+    const aaFailCount = results.filter((r) => !r.aaPass).length;
+    const aaaFailCount = results.filter((r) => !r.aaaPass).length;
+    const score = results.length > 0 ? Math.round(((results.length - aaFailCount) / results.length) * 100) : 100;
+
+    return { results, aaFailCount, aaaFailCount, score, totalChecked: results.length };
+  }
+
+  function getEffectiveBackground(el) {
+    let current = el;
+    while (current && current !== document.documentElement) {
+      const bg = getComputedStyle(current).backgroundColor;
+      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return bg;
+      current = current.parentElement;
+    }
+    return "rgb(255, 255, 255)";
+  }
+
+  function parseRGB(color) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return null;
+    return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+  }
+
+  function luminance(rgb) {
+    const a = [rgb.r, rgb.g, rgb.b].map((v) => {
+      v = v / 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+  }
+
+  function contrastRatio(fg, bg) {
+    const l1 = luminance(fg);
+    const l2 = luminance(bg);
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
   /* ── Helper: generate a CSS selector for an element ── */
   function getSelector(el) {
     if (el.id) return "#" + el.id;
@@ -1646,6 +1877,9 @@
       elementInventory: collectElementInventory(),
       transitions: collectTransitions(),
       canvasElements: collectCanvasElements(),
+      paywallData: detectPaywalls(),
+      cleanedHTML: getCleanedHTML(),
+      contrastData: checkColorContrast(),
       workingCloneData: collectWorkingCloneData(),
       seo: analyzeSEO(),
       performance: analyzePerformance(),
