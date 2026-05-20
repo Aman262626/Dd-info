@@ -1051,6 +1051,49 @@
           html = html.replace(/<head([^>]*)>/i, '<head$1>\n  <base href="' + baseUrl + '">');
         }
 
+        // Remove meta refresh redirects
+        html = html.replace(/<meta[^>]*http-equiv\s*=\s*["']refresh["'][^>]*>/gi, "");
+
+        // Inject redirect blocker + auth bypass script at top of <head>
+        const cloneGuardScript = `
+<script>
+/* Dd-info Clone Guard: prevent redirects & auth checks */
+(function(){
+  var origLocation = window.location.href;
+  // Block JS redirects
+  Object.defineProperty(window, 'location', {
+    get: function(){ return new URL(origLocation); },
+    set: function(){ return; },
+    configurable: false
+  });
+  // Block window.location.assign / replace / href changes
+  if(window.Location){
+    window.Location.prototype.assign = function(){};
+    window.Location.prototype.replace = function(){};
+    window.Location.prototype.reload = function(){};
+  }
+  // Block window.open
+  window.open = function(){ return null; };
+  // Block form submissions to external URLs
+  document.addEventListener('submit', function(e){ e.preventDefault(); }, true);
+  // Block navigation via history
+  if(window.history){
+    window.history.pushState = function(){};
+    window.history.replaceState = function(){};
+  }
+  // Block setTimeout/setInterval redirects - wrap to catch location changes
+  var origSetTimeout = window.setTimeout;
+  window.setTimeout = function(fn, delay){
+    if(typeof fn === 'string' && (fn.includes('location') || fn.includes('redirect') || fn.includes('window.href'))){
+      return 0;
+    }
+    return origSetTimeout.apply(this, arguments);
+  };
+  console.log('[Dd-info Clone] Redirect guard active - page will stay on local file');
+})();
+</script>`;
+        html = html.replace(/<head([^>]*)>/i, '<head$1>' + cloneGuardScript);
+
         zip.file("index.html", html);
       }
 
