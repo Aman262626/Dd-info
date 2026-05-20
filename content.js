@@ -180,6 +180,37 @@
       if (el.src && !el.src.startsWith("data:")) images.push(el.src);
     });
 
+    // Srcset images (responsive)
+    const srcsetImages = [];
+    document.querySelectorAll("img[srcset], picture source[srcset]").forEach((el) => {
+      const srcset = el.getAttribute("srcset");
+      if (srcset) {
+        srcset.split(",").forEach((entry) => {
+          const url = entry.trim().split(/\s+/)[0];
+          if (url && !url.startsWith("data:")) {
+            try { srcsetImages.push(new URL(url, window.location.href).href); } catch (_) {}
+          }
+        });
+      }
+    });
+
+    // Picture source elements
+    document.querySelectorAll("picture source[src]").forEach((el) => {
+      const src = el.getAttribute("src");
+      if (src && !src.startsWith("data:")) {
+        try { srcsetImages.push(new URL(src, window.location.href).href); } catch (_) {}
+      }
+    });
+
+    // Video posters & sources
+    const mediaUrls = [];
+    document.querySelectorAll("video[poster]").forEach((el) => {
+      try { mediaUrls.push(new URL(el.getAttribute("poster"), window.location.href).href); } catch (_) {}
+    });
+    document.querySelectorAll("video source[src], audio source[src]").forEach((el) => {
+      try { mediaUrls.push(new URL(el.getAttribute("src"), window.location.href).href); } catch (_) {}
+    });
+
     // Inline styles as well
     const inlineCSS = [];
     document.querySelectorAll("style").forEach((el) => {
@@ -194,7 +225,68 @@
       }
     });
 
-    return { css, js, images, inlineCSS, inlineJS };
+    return { css, js, images, srcsetImages, mediaUrls, inlineCSS, inlineJS };
+  }
+
+  /* ── Collect working clone data — all resources needed for standalone site ── */
+  function collectWorkingCloneData() {
+    const data = {
+      googleFontsCSS: [],
+      cdnResources: [],
+      preloadResources: [],
+      allLinkTags: [],
+      faviconUrls: [],
+      metaCharset: "UTF-8",
+      viewport: "",
+      baseUrl: window.location.origin,
+      fullUrl: window.location.href,
+    };
+
+    // Meta charset & viewport
+    const charsetMeta = document.querySelector("meta[charset]");
+    if (charsetMeta) data.metaCharset = charsetMeta.getAttribute("charset") || "UTF-8";
+    const viewportMeta = document.querySelector("meta[name='viewport']");
+    if (viewportMeta) data.viewport = viewportMeta.getAttribute("content") || "";
+
+    // Google Fonts CSS
+    document.querySelectorAll('link[href*="fonts.googleapis.com"], link[href*="fonts.bunny.net"]').forEach((el) => {
+      if (el.href) data.googleFontsCSS.push(el.href);
+    });
+
+    // CDN resources
+    document.querySelectorAll("link[href], script[src]").forEach((el) => {
+      const url = el.href || el.src;
+      if (!url) return;
+      const isCDN = /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com|cdn\.tailwindcss\.com|stackpath|maxcdn|ajax\.googleapis\.com|code\.jquery\.com|cdn\.bootcdn\.net|cdn\.rawgit\.com/.test(url);
+      if (isCDN) {
+        data.cdnResources.push({
+          url,
+          tag: el.tagName.toLowerCase(),
+          type: el.tagName === "LINK" ? "css" : "js",
+        });
+      }
+    });
+
+    // Preload/prefetch resources
+    document.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="modulepreload"]').forEach((el) => {
+      if (el.href) {
+        data.preloadResources.push({ url: el.href, as: el.getAttribute("as") || "", type: el.getAttribute("type") || "" });
+      }
+    });
+
+    // All link tags (for full head reconstruction)
+    document.querySelectorAll("link").forEach((el) => {
+      const attrs = {};
+      for (const attr of el.attributes) attrs[attr.name] = attr.value;
+      data.allLinkTags.push(attrs);
+    });
+
+    // Favicon URLs
+    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach((el) => {
+      if (el.href) data.faviconUrls.push(el.href);
+    });
+
+    return data;
   }
 
   /* ── 1. Collect Font File URLs ── */
@@ -1554,6 +1646,7 @@
       elementInventory: collectElementInventory(),
       transitions: collectTransitions(),
       canvasElements: collectCanvasElements(),
+      workingCloneData: collectWorkingCloneData(),
       seo: analyzeSEO(),
       performance: analyzePerformance(),
       security: analyzeSecurity(),

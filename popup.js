@@ -758,7 +758,12 @@
 
   /* ═══ DOWNLOAD ZIP ═══ */
   function setupDownloadButton() {
-    $("#download-btn").addEventListener("click", downloadSource);
+    $("#download-btn").addEventListener("click", () => downloadSource(false));
+    // Working Clone button — one click, all resources, path rewriting
+    const workingCloneBtn = $("#working-clone-btn");
+    if (workingCloneBtn) {
+      workingCloneBtn.addEventListener("click", () => downloadSource(true));
+    }
     // Select/Deselect all buttons
     const selectAllBtn = $("#select-all-btn");
     const deselectAllBtn = $("#deselect-all-btn");
@@ -782,71 +787,184 @@
     if (status) { status.style.display = "block"; status.className = "download-status progress"; status.textContent = text; }
   }
 
-  async function downloadSource() {
+  async function downloadSource(workingCloneMode) {
     if (!siteData) return;
-    const btn = $("#download-btn");
+    const btn = workingCloneMode ? ($("#working-clone-btn") || $("#download-btn")) : $("#download-btn");
     const status = $("#download-status");
     btn.disabled = true;
     status.style.display = "block";
     status.className = "download-status progress";
-    status.textContent = "Preparing complete clone...";
+    status.textContent = workingCloneMode ? "Building working clone..." : "Preparing complete clone...";
+
+    // In working clone mode, force all core resources on
+    const isChecked = (id) => workingCloneMode || ($(id) && $(id).checked);
 
     try {
       const zip = new JSZip();
       const hostname = new URL(siteData.url).hostname.replace(/[^a-z0-9.-]/gi, "_");
+      const baseUrl = siteData.url;
       let step = 0;
-      const totalSteps = 15;
+      const totalSteps = 22;
 
-      // 1. HTML
-      if ($("#dl-html").checked) {
-        updateProgress(Math.round((++step / totalSteps) * 100), "Saving HTML...");
-        zip.file("index.html", siteData.html);
+      // Maps: original URL -> local path (for HTML rewriting)
+      const cssMap = {};
+      const jsMap = {};
+      const imgMap = {};
+      const fontMap = {};
+
+      // Helper: make filenames unique
+      const usedNames = {};
+      function uniqueName(name) {
+        if (!usedNames[name]) { usedNames[name] = 1; return name; }
+        usedNames[name]++;
+        const dot = name.lastIndexOf(".");
+        if (dot > 0) return name.slice(0, dot) + "_" + usedNames[name] + name.slice(dot);
+        return name + "_" + usedNames[name];
       }
 
-      // 2. CSS
-      if ($("#dl-css").checked) {
+      // Helper: rewrite url() inside CSS content to local paths
+      function rewriteCSSUrls(cssText, cssUrl) {
+        return cssText.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g, (match, resUrl) => {
+          if (resUrl.startsWith("data:")) return match;
+          try {
+            const absUrl = new URL(resUrl, cssUrl).href;
+            if (/\.(woff2?|ttf|eot|otf)/i.test(resUrl)) {
+              const fname = uniqueName(getFilename(absUrl, "font.woff2"));
+              fontMap[absUrl] = "fonts/" + fname;
+              return "url('../fonts/" + fname + "')";
+            }
+            if (/\.(png|jpe?g|gif|svg|webp|ico|avif)/i.test(resUrl)) {
+              const fname = uniqueName(getFilename(absUrl, "img.png"));
+              imgMap[absUrl] = "images/" + fname;
+              return "url('../images/" + fname + "')";
+            }
+          } catch (_) {}
+          return match;
+        });
+      }
+
+      // ── STEP A: Download Google Fonts CSS & extract font URLs ──
+      const googleFontUrls = [];
+      if (workingCloneMode && siteData.workingCloneData && siteData.workingCloneData.googleFontsCSS.length > 0) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Downloading Google Fonts...");
+        const cssFolder = zip.folder("css");
+        let gc = 0;
+        for (const gfUrl of siteData.workingCloneData.googleFontsCSS) {
+          try {
+            let gfCSS = await fetchText(gfUrl);
+            if (gfCSS) {
+              // Extract font file URLs from Google Fonts CSS
+              const fontUrlMatches = gfCSS.match(/url\(([^)]+)\)/g) || [];
+              fontUrlMatches.forEach((m) => {
+                const fUrl = m.replace(/url\(['"]?/, "").replace(/['"]?\)/, "").trim();
+                if (fUrl && !fUrl.startsWith("data:")) {
+                  googleFontUrls.push(fUrl);
+                }
+              });
+              gfCSS = rewriteCSSUrls(gfCSS, gfUrl);
+              const fname = "google-fonts-" + gc + ".css";
+              cssFolder.file(fname, gfCSS);
+              cssMap[gfUrl] = "css/" + fname;
+              gc++;
+            }
+          } catch (_) {}
+        }
+      }
+
+      // ── STEP B: Download CSS files (rewrite url() inside them) ──
+      if (isChecked("#dl-css")) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading CSS files...");
         const cssFolder = zip.folder("css");
         let c = 0;
         for (const url of siteData.downloadResources.css) {
-          try { const r = await fetchText(url); if (r) cssFolder.file(getFilename(url, "style_" + c + ".css"), r); c++; } catch (_) {}
+          if (cssMap[url]) continue;
+          try {
+            let r = await fetchText(url);
+            if (r) {
+              r = rewriteCSSUrls(r, url);
+              const fname = uniqueName(getFilename(url, "style_" + c + ".css"));
+              cssFolder.file(fname, r);
+              cssMap[url] = "css/" + fname;
+              c++;
+            }
+          } catch (_) {}
         }
         siteData.downloadResources.inlineCSS.forEach((css, i) => { cssFolder.file("inline_" + i + ".css", css); });
       }
 
-      // 3. JS
-      if ($("#dl-js").checked) {
+      // ── STEP C: Download JS files ──
+      if (isChecked("#dl-js")) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading JS files...");
         const jsFolder = zip.folder("js");
         let c = 0;
         for (const url of siteData.downloadResources.js) {
-          try { const r = await fetchText(url); if (r) jsFolder.file(getFilename(url, "script_" + c + ".js"), r); c++; } catch (_) {}
+          try {
+            const r = await fetchText(url);
+            if (r) {
+              const fname = uniqueName(getFilename(url, "script_" + c + ".js"));
+              jsFolder.file(fname, r);
+              jsMap[url] = "js/" + fname;
+              c++;
+            }
+          } catch (_) {}
         }
         siteData.downloadResources.inlineJS.forEach((js, i) => { jsFolder.file("inline_" + i + ".js", js); });
       }
 
-      // 4. Images
-      if ($("#dl-images").checked) {
+      // ── STEP D: Download images (regular + srcset) ──
+      if (isChecked("#dl-images")) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading images...");
         const imgFolder = zip.folder("images");
         let c = 0;
-        for (const url of siteData.downloadResources.images.slice(0, 50)) {
-          try { const r = await fetchBlob(url); if (r) imgFolder.file(getFilename(url, "img_" + c + ".png"), r); c++; } catch (_) {}
+        const allImgUrls = [...siteData.downloadResources.images.slice(0, 100)];
+        // Add srcset images
+        if (siteData.downloadResources.srcsetImages) {
+          siteData.downloadResources.srcsetImages.forEach((u) => { if (!allImgUrls.includes(u)) allImgUrls.push(u); });
+        }
+        // Add video posters / media URLs (images only)
+        if (siteData.downloadResources.mediaUrls) {
+          siteData.downloadResources.mediaUrls.forEach((u) => {
+            if (/\.(png|jpe?g|gif|webp|svg|avif)/i.test(u) && !allImgUrls.includes(u)) allImgUrls.push(u);
+          });
+        }
+        for (const url of allImgUrls.slice(0, 150)) {
+          if (imgMap[url]) continue;
+          try {
+            const r = await fetchBlob(url);
+            if (r) {
+              const fname = uniqueName(getFilename(url, "img_" + c + ".png"));
+              imgFolder.file(fname, r);
+              imgMap[url] = "images/" + fname;
+              c++;
+            }
+          } catch (_) {}
         }
       }
 
-      // 5. Font Files
-      if ($("#dl-fonts").checked && siteData.fontFiles && siteData.fontFiles.length > 0) {
+      // ── STEP E: Download font files (regular + from CSS url() rewrites + Google Fonts) ──
+      if (isChecked("#dl-fonts")) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading font files...");
         const fontFolder = zip.folder("fonts");
         let c = 0;
-        for (const url of siteData.fontFiles) {
-          try { const r = await fetchBlob(url); if (r) fontFolder.file(getFilename(url, "font_" + c + ".woff2"), r); c++; } catch (_) {}
+        const allFontUrls = [...(siteData.fontFiles || []), ...googleFontUrls];
+        // Also include fonts discovered during CSS rewriting
+        Object.keys(fontMap).forEach((u) => { if (!allFontUrls.includes(u)) allFontUrls.push(u); });
+        for (const url of allFontUrls) {
+          if (fontMap[url] && zip.file(fontMap[url])) continue;
+          try {
+            const r = await fetchBlob(url);
+            if (r) {
+              const fname = fontMap[url] ? fontMap[url].replace("fonts/", "") : uniqueName(getFilename(url, "font_" + c + ".woff2"));
+              fontFolder.file(fname, r);
+              fontMap[url] = "fonts/" + fname;
+              c++;
+            }
+          } catch (_) {}
         }
       }
 
-      // 6. SVGs
-      if ($("#dl-svgs").checked && siteData.inlineSVGs && siteData.inlineSVGs.length > 0) {
+      // ── STEP F: SVGs ──
+      if (isChecked("#dl-svgs") && siteData.inlineSVGs && siteData.inlineSVGs.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting SVG icons...");
         const svgFolder = zip.folder("svgs");
         siteData.inlineSVGs.forEach((svg) => {
@@ -854,8 +972,8 @@
         });
       }
 
-      // 7. Favicons
-      if ($("#dl-favicons").checked && siteData.faviconsAndManifest) {
+      // ── STEP G: Favicons ──
+      if (isChecked("#dl-favicons") && siteData.faviconsAndManifest) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading favicons...");
         const faviconFolder = zip.folder("favicons");
         for (const fav of siteData.faviconsAndManifest.favicons) {
@@ -866,18 +984,67 @@
         }
       }
 
-      // 8. Background Images
-      if ($("#dl-bgimages").checked && siteData.backgrounds && siteData.backgrounds.imageUrls.length > 0) {
+      // ── STEP H: Background images ──
+      if (isChecked("#dl-bgimages") && siteData.backgrounds && siteData.backgrounds.imageUrls.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Downloading background images...");
         const bgFolder = zip.folder("bg-images");
         let c = 0;
         for (const url of siteData.backgrounds.imageUrls.slice(0, 30)) {
-          try { const r = await fetchBlob(url); if (r) bgFolder.file(getFilename(url, "bg_" + c + ".png"), r); c++; } catch (_) {}
+          try {
+            const r = await fetchBlob(url);
+            if (r) {
+              const fname = uniqueName(getFilename(url, "bg_" + c + ".png"));
+              bgFolder.file(fname, r);
+              imgMap[url] = "bg-images/" + fname;
+              c++;
+            }
+          } catch (_) {}
         }
       }
 
+      // ── STEP I: Build working HTML (rewrite all paths) ──
+      if (isChecked("#dl-html")) {
+        updateProgress(Math.round((++step / totalSteps) * 100), "Building working HTML...");
+        let html = siteData.html;
+
+        // Rewrite CSS <link> hrefs
+        Object.entries(cssMap).forEach(([origUrl, localPath]) => {
+          html = html.split(origUrl).join(localPath);
+        });
+
+        // Rewrite JS <script> srcs
+        Object.entries(jsMap).forEach(([origUrl, localPath]) => {
+          html = html.split(origUrl).join(localPath);
+        });
+
+        // Rewrite <img> srcs and srcset URLs
+        Object.entries(imgMap).forEach(([origUrl, localPath]) => {
+          html = html.split(origUrl).join(localPath);
+        });
+
+        // Rewrite font URLs in inline styles
+        Object.entries(fontMap).forEach(([origUrl, localPath]) => {
+          html = html.split(origUrl).join(localPath);
+        });
+
+        // Rewrite favicon hrefs
+        if (siteData.workingCloneData && siteData.workingCloneData.faviconUrls) {
+          siteData.workingCloneData.faviconUrls.forEach((favUrl) => {
+            const fname = getFilename(favUrl, "favicon.ico");
+            html = html.split(favUrl).join("favicons/" + fname);
+          });
+        }
+
+        // Add <base> tag for any remaining relative resources (fallback to original site)
+        if (!html.includes("<base ")) {
+          html = html.replace(/<head([^>]*)>/i, '<head$1>\n  <base href="' + baseUrl + '">');
+        }
+
+        zip.file("index.html", html);
+      }
+
       // 9. CSS Variables
-      if ($("#dl-variables").checked && siteData.cssVariables) {
+      if (isChecked("#dl-variables") && siteData.cssVariables) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Generating CSS variables...");
         const varsObj = siteData.cssVariables;
         if (Object.keys(varsObj).length > 0) {
@@ -891,7 +1058,7 @@
       }
 
       // 10. Animations & Keyframes
-      if ($("#dl-animations").checked && siteData.animations) {
+      if (isChecked("#dl-animations") && siteData.animations) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting animations...");
         let animContent = "/* CSS Animations & Keyframes extracted by Dd-info */\n\n";
         if (siteData.animations.keyframes.length > 0) {
@@ -910,7 +1077,7 @@
       }
 
       // 11. Buttons & Interactive Elements
-      if ($("#dl-buttons").checked && siteData.interactiveElements) {
+      if (isChecked("#dl-buttons") && siteData.interactiveElements) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Documenting buttons & inputs...");
         let btnCSS = "/* Button & Interactive Element Styles extracted by Dd-info */\n\n";
         siteData.interactiveElements.forEach((el, i) => {
@@ -928,7 +1095,7 @@
       }
 
       // 12. Form Elements
-      if ($("#dl-forms").checked && siteData.formElements && siteData.formElements.length > 0) {
+      if (isChecked("#dl-forms") && siteData.formElements && siteData.formElements.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Documenting form structures...");
         let formHTML = "<!-- Form Elements extracted by Dd-info -->\n\n";
         siteData.formElements.forEach((form) => {
@@ -955,7 +1122,7 @@
       }
 
       // 13. Layout Map
-      if ($("#dl-layout").checked && siteData.layoutMap) {
+      if (isChecked("#dl-layout") && siteData.layoutMap) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Generating layout map...");
         zip.file("structure/layout-map.json", JSON.stringify(siteData.layoutMap, null, 2));
         if (siteData.iframeSources && siteData.iframeSources.length > 0) {
@@ -970,7 +1137,7 @@
       }
 
       // 14. Computed Styles
-      if ($("#dl-styles").checked && siteData.computedStyles) {
+      if (isChecked("#dl-styles") && siteData.computedStyles) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting computed styles...");
         let stylesCSS = "/* Computed Styles for Key Elements extracted by Dd-info */\n\n";
         siteData.computedStyles.forEach((elem) => {
@@ -987,7 +1154,7 @@
       }
 
       // 15. Media Queries
-      if ($("#dl-media").checked && siteData.mediaQueries && siteData.mediaQueries.length > 0) {
+      if (isChecked("#dl-media") && siteData.mediaQueries && siteData.mediaQueries.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting media queries...");
         let mqCSS = "/* Media Queries (Breakpoints) extracted by Dd-info */\n\n";
         siteData.mediaQueries.forEach((mq) => {
@@ -1007,7 +1174,7 @@
       }
 
       // 16. Typography Map
-      if ($("#dl-typography").checked && siteData.typography) {
+      if (isChecked("#dl-typography") && siteData.typography) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting typography...");
         let typoCSS = "/* Typography Map extracted by Dd-info */\n\n";
         Object.entries(siteData.typography).forEach(([sel, t]) => {
@@ -1023,7 +1190,7 @@
       }
 
       // 17. Shadows
-      if ($("#dl-shadows").checked && siteData.shadows) {
+      if (isChecked("#dl-shadows") && siteData.shadows) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting shadows...");
         let shadowCSS = "/* Shadows extracted by Dd-info */\n\n";
         siteData.shadows.boxShadows.forEach((s) => {
@@ -1036,7 +1203,7 @@
       }
 
       // 18. Borders
-      if ($("#dl-borders").checked && siteData.borders && siteData.borders.length > 0) {
+      if (isChecked("#dl-borders") && siteData.borders && siteData.borders.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting borders...");
         let borderCSS = "/* Border Styles extracted by Dd-info */\n\n";
         siteData.borders.forEach((b) => {
@@ -1049,7 +1216,7 @@
       }
 
       // 19. Navigation
-      if ($("#dl-navigation").checked && siteData.navigation && siteData.navigation.length > 0) {
+      if (isChecked("#dl-navigation") && siteData.navigation && siteData.navigation.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting navigation...");
         let navHTML = "<!-- Navigation Structure extracted by Dd-info -->\n\n";
         siteData.navigation.forEach((nav) => {
@@ -1065,7 +1232,7 @@
       }
 
       // 20. Tables
-      if ($("#dl-tables").checked && siteData.tableData && siteData.tableData.length > 0) {
+      if (isChecked("#dl-tables") && siteData.tableData && siteData.tableData.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting tables...");
         siteData.tableData.forEach((table, ti) => {
           let csv = "";
@@ -1077,19 +1244,19 @@
       }
 
       // 21. Image Map
-      if ($("#dl-imgmap").checked && siteData.imageInventory && siteData.imageInventory.length > 0) {
+      if (isChecked("#dl-imgmap") && siteData.imageInventory && siteData.imageInventory.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Generating image map...");
         zip.file("structure/image-inventory.json", JSON.stringify(siteData.imageInventory, null, 2));
       }
 
       // 22. Z-Index Map
-      if ($("#dl-zindex").checked && siteData.zIndexMap && siteData.zIndexMap.length > 0) {
+      if (isChecked("#dl-zindex") && siteData.zIndexMap && siteData.zIndexMap.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Mapping z-index stack...");
         zip.file("structure/z-index-map.json", JSON.stringify(siteData.zIndexMap, null, 2));
       }
 
       // 23. Data Attributes
-      if ($("#dl-data-attrs").checked && siteData.dataAttributes) {
+      if (isChecked("#dl-data-attrs") && siteData.dataAttributes) {
         const daKeys = Object.keys(siteData.dataAttributes);
         if (daKeys.length > 0) {
           updateProgress(Math.round((++step / totalSteps) * 100), "Extracting data attributes...");
@@ -1098,7 +1265,7 @@
       }
 
       // 24. Social Links
-      if ($("#dl-social").checked && siteData.socialLinks && siteData.socialLinks.length > 0) {
+      if (isChecked("#dl-social") && siteData.socialLinks && siteData.socialLinks.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting social links...");
         let socialHTML = "<!-- Social Media Links extracted by Dd-info -->\n<ul>\n";
         siteData.socialLinks.forEach((s) => {
@@ -1110,7 +1277,7 @@
       }
 
       // 25. Text Content
-      if ($("#dl-text").checked && siteData.textContent && siteData.textContent.length > 0) {
+      if (isChecked("#dl-text") && siteData.textContent && siteData.textContent.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting text content...");
         let textMD = "# Page Text Content\n\n";
         siteData.textContent.forEach((sec) => {
@@ -1121,7 +1288,7 @@
       }
 
       // 26. Schema / Structured Data
-      if ($("#dl-schema").checked && siteData.structuredData && siteData.structuredData.length > 0) {
+      if (isChecked("#dl-schema") && siteData.structuredData && siteData.structuredData.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting structured data...");
         siteData.structuredData.forEach((sd, i) => {
           zip.file("structure/schema-" + i + ".json", JSON.stringify(sd, null, 2));
@@ -1129,13 +1296,13 @@
       }
 
       // 27. Scroll Behaviors
-      if ($("#dl-scroll").checked && siteData.scrollBehaviors && siteData.scrollBehaviors.length > 0) {
+      if (isChecked("#dl-scroll") && siteData.scrollBehaviors && siteData.scrollBehaviors.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting scroll behaviors...");
         zip.file("structure/scroll-behaviors.json", JSON.stringify(siteData.scrollBehaviors, null, 2));
       }
 
       // 28. Color Palette CSS
-      if ($("#dl-colorpalette").checked && siteData.colorPalette) {
+      if (isChecked("#dl-colorpalette") && siteData.colorPalette) {
         const colors = Object.entries(siteData.colorPalette);
         if (colors.length > 0) {
           updateProgress(Math.round((++step / totalSteps) * 100), "Generating color palette...");
@@ -1149,7 +1316,7 @@
       }
 
       // 29. Flexbox & Grid Layouts
-      if ($("#dl-flexgrid").checked && siteData.flexGridLayouts && siteData.flexGridLayouts.length > 0) {
+      if (isChecked("#dl-flexgrid") && siteData.flexGridLayouts && siteData.flexGridLayouts.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting flex/grid layouts...");
         let layoutCSS = "/* Flexbox & Grid Layouts extracted by Dd-info */\n\n";
         siteData.flexGridLayouts.forEach((l) => {
@@ -1172,7 +1339,7 @@
       }
 
       // 30. Link Map
-      if ($("#dl-linkmap").checked && siteData.linkMap) {
+      if (isChecked("#dl-linkmap") && siteData.linkMap) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Generating link map...");
         zip.file("structure/link-map.json", JSON.stringify(siteData.linkMap, null, 2));
         let sitemapXML = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
@@ -1184,25 +1351,25 @@
       }
 
       // 31. Icon Classes
-      if ($("#dl-icons").checked && siteData.iconClasses && siteData.iconClasses.length > 0) {
+      if (isChecked("#dl-icons") && siteData.iconClasses && siteData.iconClasses.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting icon classes...");
         zip.file("structure/icon-classes.json", JSON.stringify(siteData.iconClasses, null, 2));
       }
 
       // 32. Page Size Analysis
-      if ($("#dl-pagesize").checked && siteData.pageSize) {
+      if (isChecked("#dl-pagesize") && siteData.pageSize) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Analyzing page size...");
         zip.file("structure/page-size-analysis.json", JSON.stringify(siteData.pageSize, null, 2));
       }
 
       // 33. API Endpoints
-      if ($("#dl-apis").checked && siteData.apiEndpoints && siteData.apiEndpoints.length > 0) {
+      if (isChecked("#dl-apis") && siteData.apiEndpoints && siteData.apiEndpoints.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting API endpoints...");
         zip.file("structure/api-endpoints.json", JSON.stringify(siteData.apiEndpoints, null, 2));
       }
 
       // 34. Storage Keys
-      if ($("#dl-storage").checked && siteData.storageKeys) {
+      if (isChecked("#dl-storage") && siteData.storageKeys) {
         const lsKeys = Object.keys(siteData.storageKeys.localStorage);
         const ssKeys = Object.keys(siteData.storageKeys.sessionStorage);
         if (lsKeys.length > 0 || ssKeys.length > 0) {
@@ -1212,7 +1379,7 @@
       }
 
       // 35. Spacing Scale
-      if ($("#dl-spacing").checked && siteData.spacingScale) {
+      if (isChecked("#dl-spacing") && siteData.spacingScale) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting spacing scale...");
         let spacingCSS = "/* Spacing Scale extracted by Dd-info */\n:root {\n";
         spacingCSS += "  /* Margins (most used) */\n";
@@ -1234,7 +1401,7 @@
       }
 
       // 36. OG / Social Preview
-      if ($("#dl-ogpreview").checked && siteData.socialPreview) {
+      if (isChecked("#dl-ogpreview") && siteData.socialPreview) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting OG preview...");
         zip.file("structure/social-preview.json", JSON.stringify(siteData.socialPreview, null, 2));
         let ogHTML = "<!-- Social/OG Preview Card -->\n<div class='og-preview' style='max-width:500px;border:1px solid #ddd;border-radius:8px;overflow:hidden;font-family:sans-serif'>\n";
@@ -1249,13 +1416,13 @@
       }
 
       // 37. DOM Element Inventory
-      if ($("#dl-eleminventory").checked && siteData.elementInventory && siteData.elementInventory.length > 0) {
+      if (isChecked("#dl-eleminventory") && siteData.elementInventory && siteData.elementInventory.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Generating DOM inventory...");
         zip.file("structure/element-inventory.json", JSON.stringify(siteData.elementInventory, null, 2));
       }
 
       // 38. Transitions
-      if ($("#dl-transitions").checked && siteData.transitions && siteData.transitions.length > 0) {
+      if (isChecked("#dl-transitions") && siteData.transitions && siteData.transitions.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Extracting transitions...");
         let transCSS = "/* CSS Transitions extracted by Dd-info */\n\n";
         siteData.transitions.forEach((t) => {
@@ -1265,16 +1432,24 @@
       }
 
       // 39. Canvas Elements
-      if ($("#dl-canvas").checked && siteData.canvasElements && siteData.canvasElements.length > 0) {
+      if (isChecked("#dl-canvas") && siteData.canvasElements && siteData.canvasElements.length > 0) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Documenting canvas elements...");
         zip.file("structure/canvas-elements.json", JSON.stringify(siteData.canvasElements, null, 2));
       }
 
       // Enhanced README
       updateProgress(95, "Generating README...");
-      let readmeContent = "# Source Clone: " + hostname + "\n\n";
-      readmeContent += "Downloaded by Dd-info Chrome Extension — Complete Website Clone\n\n";
+      let readmeContent = "# " + (workingCloneMode ? "Working" : "Source") + " Clone: " + hostname + "\n\n";
+      readmeContent += "Downloaded by Dd-info Chrome Extension" + (workingCloneMode ? " — WORKING CLONE MODE" : " — Complete Website Clone") + "\n\n";
       readmeContent += "URL: " + siteData.url + "\n\n";
+      if (workingCloneMode) {
+        readmeContent += "## How to Use\n";
+        readmeContent += "1. Unzip this file\n";
+        readmeContent += "2. Open `index.html` in your browser\n";
+        readmeContent += "3. The page should look and work like the original website\n";
+        readmeContent += "4. All CSS, JS, images, and fonts are included locally\n";
+        readmeContent += "5. A `<base>` tag points to the original URL for any remaining external resources\n\n";
+      }
       readmeContent += "## Tech Stack\n" + (siteData.techStack.length ? siteData.techStack.map((t) => "- " + t).join("\n") : "- None detected") + "\n\n";
       readmeContent += "## Fonts Used\n" + (siteData.fonts.length ? siteData.fonts.map((f) => "- " + f).join("\n") : "- Default fonts") + "\n\n";
       readmeContent += "## Color Palette\n" + (siteData.colors.length ? siteData.colors.map((c) => "- `" + c + "`").join("\n") : "- None detected") + "\n\n";
@@ -1348,14 +1523,14 @@
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
-      a.download = hostname + "_complete_clone.zip";
+      a.download = hostname + (workingCloneMode ? "_working_clone.zip" : "_complete_clone.zip");
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
 
       status.className = "download-status success";
-      status.textContent = "Complete clone downloaded!";
+      status.textContent = workingCloneMode ? "Working clone downloaded! Open index.html to view." : "Complete clone downloaded!";
       const progressBar = $("#download-progress");
       if (progressBar) progressBar.style.display = "none";
     } catch (err) {

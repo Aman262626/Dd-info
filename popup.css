@@ -216,6 +216,25 @@ body::-webkit-scrollbar-thumb { background: #4338ca; border-radius: 3px; }
 .btn-primary:active { transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.btn-working-clone {
+  width: 100%; padding: 11px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 6px;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-bottom: 6px;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+.btn-working-clone:hover { opacity: 0.9; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); }
+.btn-working-clone:active { transform: scale(0.98); }
+.btn-working-clone:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.working-clone-desc {
+  font-size: 11px; color: #10b981; text-align: center;
+  margin-bottom: 8px; opacity: 0.8;
+}
+
 .btn-secondary {
   width: 100%; padding: 8px; border: 1px solid #4338ca; border-radius: 8px;
   background: transparent; color: #c4b5fd; font-size: 12px; font-weight: 500;
