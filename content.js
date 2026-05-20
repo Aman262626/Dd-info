@@ -1252,6 +1252,17 @@
       }
     });
 
+    // Remove meta refresh redirects
+    clone.querySelectorAll("meta[http-equiv='refresh']").forEach((el) => el.remove());
+
+    // Remove scripts that handle auth/routing redirects
+    clone.querySelectorAll("script:not([src])").forEach((script) => {
+      const code = script.textContent || "";
+      if (/window\.location\s*[=.]|location\.href\s*=|location\.replace\s*\(|location\.assign\s*\(|window\.navigate|router\.|redirect/i.test(code)) {
+        script.remove();
+      }
+    });
+
     // Add style block to force-remove blur and scroll lock
     const cleanupStyle = clone.querySelector("head") ? clone.querySelector("head") : clone;
     const style = document.createElement("style");
