@@ -169,6 +169,24 @@
             <span class="stat-label">Links</span>
           </div>
         </div>
+        <div class="stats-grid stats-grid-extra" style="margin-top:6px;">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-fonts">0</span>
+            <span class="stat-label">Fonts</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-svgs">0</span>
+            <span class="stat-label">SVGs</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-forms">0</span>
+            <span class="stat-label">Forms</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-iframes">0</span>
+            <span class="stat-label">Iframes</span>
+          </div>
+        </div>
       </section>
 
       <!-- Download Section -->
@@ -182,8 +200,26 @@
           <label class="checkbox-label"><input type="checkbox" id="dl-css" checked> CSS</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-js" checked> JS</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-images"> Images</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-fonts" checked> Fonts</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-svgs" checked> SVGs</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-favicons" checked> Favicons</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-bgimages"> BG Images</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-variables" checked> CSS Vars</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-animations" checked> Animations</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-buttons" checked> Buttons</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-forms" checked> Forms</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-layout" checked> Layout Map</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-styles" checked> Styles</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-media"> Media Queries</label>
         </div>
-        <button id="download-btn" class="btn-primary">Download ZIP</button>
+        <div class="download-actions">
+          <button id="select-all-btn" class="btn-small">Select All</button>
+          <button id="deselect-all-btn" class="btn-small">Deselect All</button>
+        </div>
+        <button id="download-btn" class="btn-primary">Download Complete Clone ZIP</button>
+        <div id="download-progress" class="download-progress-bar" style="display:none;">
+          <div id="download-progress-fill" class="progress-fill"></div>
+        </div>
         <div id="download-status" class="download-status" style="display:none;"></div>
       </section>
 
