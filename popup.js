@@ -23,6 +23,7 @@
     setupHeadersButton();
     setupContrastToggle();
     setupQRDownload();
+    setupHostClone();
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -1933,5 +1934,145 @@
         });
       });
     }
+  }
+
+  /* ═══ HOST CLONE ONLINE ═══ */
+  function setupHostClone() {
+    const btn = $("#host-clone-btn");
+    if (!btn) return;
+
+    // Restore saved server URL
+    const urlInput = $("#host-server-url");
+    if (urlInput) {
+      const saved = localStorage.getItem("dd-info-host-url");
+      if (saved) urlInput.value = saved;
+    }
+
+    btn.addEventListener("click", async () => {
+      if (!siteData) return;
+      const serverUrl = ($("#host-server-url") || {}).value || "";
+      const siteName = ($("#host-site-name") || {}).value || "";
+      const status = $("#host-status");
+
+      if (!serverUrl) {
+        if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Server URL daalo pehle!"; }
+        return;
+      }
+
+      // Save URL for next time
+      localStorage.setItem("dd-info-host-url", serverUrl);
+
+      btn.disabled = true;
+      if (status) { status.style.display = "block"; status.className = "download-status progress"; status.textContent = "Building clone & uploading..."; }
+
+      try {
+        // Build the ZIP in memory (reuse the working clone logic)
+        const zip = new JSZip();
+        const hostname = new URL(siteData.url).hostname.replace(/[^a-z0-9.-]/gi, "_");
+        const baseUrl = siteData.url;
+        const cssMap = {};
+        const jsMap = {};
+        const imgMap = {};
+        const fontMap = {};
+        const usedNames = {};
+        function uniqueName(name) {
+          if (!usedNames[name]) { usedNames[name] = 1; return name; }
+          usedNames[name]++;
+          const dot = name.lastIndexOf(".");
+          if (dot > 0) return name.slice(0, dot) + "_" + usedNames[name] + name.slice(dot);
+          return name + "_" + usedNames[name];
+        }
+        function rewriteCSSUrls(cssText, cssUrl) {
+          return cssText.replace(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g, (match, resUrl) => {
+            if (resUrl.startsWith("data:")) return match;
+            try {
+              const absUrl = new URL(resUrl, cssUrl).href;
+              if (/\.(woff2?|ttf|eot|otf)/i.test(resUrl)) {
+                const fname = uniqueName(getFilename(absUrl, "font.woff2"));
+                fontMap[absUrl] = "fonts/" + fname;
+                return "url('../fonts/" + fname + "')";
+              }
+              if (/\.(png|jpe?g|gif|svg|webp|ico|avif)/i.test(resUrl)) {
+                const fname = uniqueName(getFilename(absUrl, "img.png"));
+                imgMap[absUrl] = "images/" + fname;
+                return "url('../images/" + fname + "')";
+              }
+            } catch (_) {}
+            return match;
+          });
+        }
+
+        // Download CSS
+        if (status) status.textContent = "Downloading CSS...";
+        const cssFolder = zip.folder("css");
+        let c = 0;
+        for (const url of (siteData.downloadResources || {}).css || []) {
+          try {
+            let r = await fetchText(url);
+            if (r) {
+              r = rewriteCSSUrls(r, url);
+              const fname = uniqueName(getFilename(url, "style_" + c + ".css"));
+              cssFolder.file(fname, r);
+              cssMap[url] = "css/" + fname;
+              c++;
+            }
+          } catch (_) {}
+        }
+
+        // Download JS
+        if (status) status.textContent = "Downloading JS...";
+        const jsFolder = zip.folder("js");
+        c = 0;
+        for (const url of (siteData.downloadResources || {}).js || []) {
+          try {
+            const r = await fetchText(url);
+            if (r) {
+              const fname = uniqueName(getFilename(url, "script_" + c + ".js"));
+              jsFolder.file(fname, r);
+              jsMap[url] = "js/" + fname;
+              c++;
+            }
+          } catch (_) {}
+        }
+
+        // Build HTML
+        if (status) status.textContent = "Building HTML...";
+        const removePaywall = $("#dl-remove-paywall") && $("#dl-remove-paywall").checked;
+        let html = (removePaywall && siteData.cleanedHTML) ? siteData.cleanedHTML : siteData.html;
+        Object.entries(cssMap).forEach(([origUrl, localPath]) => { html = html.split(origUrl).join(localPath); });
+        Object.entries(jsMap).forEach(([origUrl, localPath]) => { html = html.split(origUrl).join(localPath); });
+        if (!html.includes("<base ")) {
+          html = html.replace(/<head([^>]*)>/i, '<head$1>\n  <base href="' + baseUrl + '">');
+        }
+        zip.file("index.html", html);
+
+        // Generate ZIP blob
+        if (status) status.textContent = "Generating ZIP...";
+        const blob = await zip.generateAsync({ type: "blob" });
+
+        // Upload to server
+        if (status) status.textContent = "Uploading to server...";
+        const formData = new FormData();
+        formData.append("file", blob, hostname + "_clone.zip");
+        formData.append("name", siteName || hostname);
+
+        const uploadUrl = serverUrl.replace(/\/+$/, "") + "/api/upload";
+        const resp = await fetch(uploadUrl, { method: "POST", body: formData });
+        const result = await resp.json();
+
+        if (result.success) {
+          if (status) {
+            status.style.display = "block";
+            status.className = "download-status success";
+            status.innerHTML = 'Hosted! <a href="' + result.url + '" target="_blank" style="color:#4ade80;text-decoration:underline;">' + result.url + '</a>';
+          }
+        } else {
+          if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Error: " + (result.error || "Upload failed"); }
+        }
+      } catch (err) {
+        if (status) { status.style.display = "block"; status.className = "download-status error"; status.textContent = "Failed: " + err.message; }
+      }
+      btn.disabled = false;
+    });
   }
 })();
