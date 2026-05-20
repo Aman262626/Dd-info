@@ -787,6 +787,253 @@
     return behaviors;
   }
 
+  /* ── 26. Collect Color Palette as CSS Variables ── */
+  function collectColorPalette() {
+    const colorMap = {};
+    const colorProps = ["color", "backgroundColor", "borderColor", "borderTopColor", "borderBottomColor", "borderLeftColor", "borderRightColor", "outlineColor"];
+    document.querySelectorAll("body *").forEach((el) => {
+      if (Object.keys(colorMap).length > 60) return;
+      const style = getComputedStyle(el);
+      colorProps.forEach((prop) => {
+        const val = style[prop];
+        if (val && val !== "rgba(0, 0, 0, 0)" && val !== "rgb(0, 0, 0)" && val !== "transparent" && val !== "inherit") {
+          if (!colorMap[val]) colorMap[val] = { count: 0, usage: prop };
+          colorMap[val].count++;
+        }
+      });
+    });
+    return colorMap;
+  }
+
+  /* ── 27. Collect Flexbox & Grid Layouts ── */
+  function collectFlexGridLayouts() {
+    const layouts = [];
+    document.querySelectorAll("body *").forEach((el) => {
+      if (layouts.length > 40) return;
+      const style = getComputedStyle(el);
+      if (style.display === "flex" || style.display === "inline-flex") {
+        layouts.push({
+          selector: getSelector(el),
+          type: "flexbox",
+          display: style.display,
+          flexDirection: style.flexDirection,
+          flexWrap: style.flexWrap,
+          justifyContent: style.justifyContent,
+          alignItems: style.alignItems,
+          gap: style.gap,
+          children: el.children.length,
+        });
+      } else if (style.display === "grid" || style.display === "inline-grid") {
+        layouts.push({
+          selector: getSelector(el),
+          type: "grid",
+          display: style.display,
+          gridTemplateColumns: style.gridTemplateColumns,
+          gridTemplateRows: style.gridTemplateRows,
+          gap: style.gap,
+          gridAutoFlow: style.gridAutoFlow,
+          children: el.children.length,
+        });
+      }
+    });
+    return layouts;
+  }
+
+  /* ── 28. Collect Link Map / Sitemap ── */
+  function collectLinkMap() {
+    const internal = [];
+    const external = [];
+    const anchors = [];
+    const mailto = [];
+    const tel = [];
+    const currentHost = window.location.hostname;
+    document.querySelectorAll("a[href]").forEach((a) => {
+      const href = a.getAttribute("href") || "";
+      const text = a.textContent.trim().substring(0, 60);
+      if (href.startsWith("#")) {
+        anchors.push({ href, text });
+      } else if (href.startsWith("mailto:")) {
+        mailto.push({ href: href.replace("mailto:", ""), text });
+      } else if (href.startsWith("tel:")) {
+        tel.push({ href: href.replace("tel:", ""), text });
+      } else {
+        try {
+          const url = new URL(href, window.location.href);
+          if (url.hostname === currentHost) {
+            if (!internal.some((l) => l.href === url.pathname)) {
+              internal.push({ href: url.pathname, text });
+            }
+          } else {
+            if (!external.some((l) => l.href === url.href)) {
+              external.push({ href: url.href, text, domain: url.hostname });
+            }
+          }
+        } catch (_) {}
+      }
+    });
+    return { internal: internal.slice(0, 50), external: external.slice(0, 50), anchors: anchors.slice(0, 30), mailto, tel };
+  }
+
+  /* ── 29. Collect Icon Classes ── */
+  function collectIconClasses() {
+    const icons = [];
+    const iconPatterns = [
+      { lib: "Font Awesome", selector: ".fa,.fas,.far,.fab,.fal,.fad,.fass,[class*='fa-']", getIcon: (el) => [...el.classList].find((c) => c.startsWith("fa-") && c !== "fa-") || "" },
+      { lib: "Material Icons", selector: ".material-icons,.material-icons-outlined,.material-icons-round,.material-symbols-outlined", getIcon: (el) => el.textContent.trim() },
+      { lib: "Bootstrap Icons", selector: "[class*='bi-']", getIcon: (el) => [...el.classList].find((c) => c.startsWith("bi-")) || "" },
+      { lib: "Heroicons", selector: "[class*='heroicon']", getIcon: (el) => [...el.classList].find((c) => c.includes("heroicon")) || "" },
+      { lib: "Lucide", selector: "[class*='lucide-']", getIcon: (el) => [...el.classList].find((c) => c.startsWith("lucide-")) || "" },
+    ];
+    iconPatterns.forEach(({ lib, selector, getIcon }) => {
+      document.querySelectorAll(selector).forEach((el) => {
+        if (icons.length > 80) return;
+        const icon = getIcon(el);
+        if (icon && !icons.some((i) => i.icon === icon && i.lib === lib)) {
+          icons.push({ lib, icon, tag: el.tagName.toLowerCase() });
+        }
+      });
+    });
+    return icons;
+  }
+
+  /* ── 30. Collect Page Size Analysis ── */
+  function collectPageSize() {
+    const html = document.documentElement.outerHTML;
+    const htmlSize = new Blob([html]).size;
+    const nodeCount = document.querySelectorAll("*").length;
+    const textLength = document.body.innerText.length;
+    const perfEntries = performance.getEntriesByType("resource");
+    let totalTransferred = 0;
+    const byType = {};
+    perfEntries.forEach((e) => {
+      totalTransferred += e.transferSize || 0;
+      const ext = (e.name.split("?")[0].split(".").pop() || "other").toLowerCase();
+      if (!byType[ext]) byType[ext] = { count: 0, size: 0 };
+      byType[ext].count++;
+      byType[ext].size += e.transferSize || 0;
+    });
+    return { htmlSize, totalTransferred, nodeCount, textLength, resourceCount: perfEntries.length, byType };
+  }
+
+  /* ── 31. Collect External API Endpoints ── */
+  function collectAPIEndpoints() {
+    const endpoints = new Set();
+    document.querySelectorAll("script:not([src])").forEach((script) => {
+      const code = script.textContent || "";
+      const fetchMatches = code.match(/fetch\s*\(\s*['"`]([^'"`]+)['"`]/g) || [];
+      fetchMatches.forEach((m) => {
+        const url = m.match(/['"`]([^'"`]+)['"`]/);
+        if (url && url[1]) endpoints.add(url[1]);
+      });
+      const xhrMatches = code.match(/\.open\s*\(\s*['"`]\w+['"`]\s*,\s*['"`]([^'"`]+)['"`]/g) || [];
+      xhrMatches.forEach((m) => {
+        const url = m.match(/,\s*['"`]([^'"`]+)['"`]/);
+        if (url && url[1]) endpoints.add(url[1]);
+      });
+      const apiMatches = code.match(/['"`](\/api\/[^'"`]+)['"`]/g) || [];
+      apiMatches.forEach((m) => {
+        const url = m.match(/['"`]([^'"`]+)['"`]/);
+        if (url && url[1]) endpoints.add(url[1]);
+      });
+    });
+    return [...endpoints].slice(0, 30);
+  }
+
+  /* ── 32. Collect LocalStorage Keys ── */
+  function collectStorageKeys() {
+    const ls = {};
+    const ss = {};
+    try {
+      for (let i = 0; i < localStorage.length && i < 30; i++) {
+        const key = localStorage.key(i);
+        const val = localStorage.getItem(key);
+        ls[key] = val ? val.substring(0, 100) : "";
+      }
+    } catch (_) {}
+    try {
+      for (let i = 0; i < sessionStorage.length && i < 20; i++) {
+        const key = sessionStorage.key(i);
+        const val = sessionStorage.getItem(key);
+        ss[key] = val ? val.substring(0, 100) : "";
+      }
+    } catch (_) {}
+    return { localStorage: ls, sessionStorage: ss };
+  }
+
+  /* ── 33. Collect Spacing Scale ── */
+  function collectSpacingScale() {
+    const margins = {};
+    const paddings = {};
+    const gaps = {};
+    document.querySelectorAll("body *").forEach((el) => {
+      const style = getComputedStyle(el);
+      [style.marginTop, style.marginRight, style.marginBottom, style.marginLeft].forEach((m) => {
+        if (m && m !== "0px" && m !== "auto") { margins[m] = (margins[m] || 0) + 1; }
+      });
+      [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft].forEach((p) => {
+        if (p && p !== "0px") { paddings[p] = (paddings[p] || 0) + 1; }
+      });
+      if (style.gap && style.gap !== "normal" && style.gap !== "0px") {
+        gaps[style.gap] = (gaps[style.gap] || 0) + 1;
+      }
+    });
+    const sortByCount = (obj) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([val, count]) => ({ value: val, count }));
+    return { margins: sortByCount(margins), paddings: sortByCount(paddings), gaps: sortByCount(gaps) };
+  }
+
+  /* ── 34. Collect OG / Social Preview ── */
+  function collectSocialPreview() {
+    const og = {};
+    document.querySelectorAll("meta[property^='og:']").forEach((m) => {
+      og[m.getAttribute("property")] = m.getAttribute("content") || "";
+    });
+    const twitter = {};
+    document.querySelectorAll("meta[name^='twitter:']").forEach((m) => {
+      twitter[m.getAttribute("name")] = m.getAttribute("content") || "";
+    });
+    return { og, twitter, title: document.title, description: (document.querySelector("meta[name='description']") || {}).content || "" };
+  }
+
+  /* ── 35. Collect DOM Element Inventory ── */
+  function collectElementInventory() {
+    const counts = {};
+    document.querySelectorAll("body *").forEach((el) => {
+      const tag = el.tagName.toLowerCase();
+      counts[tag] = (counts[tag] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([tag, count]) => ({ tag, count }));
+  }
+
+  /* ── 36. Collect Transition Properties ── */
+  function collectTransitions() {
+    const transitions = [];
+    const seen = new Set();
+    document.querySelectorAll("body *").forEach((el) => {
+      if (transitions.length > 30) return;
+      const style = getComputedStyle(el);
+      const t = style.transition;
+      if (t && t !== "all 0s ease 0s" && t !== "none 0s ease 0s" && t !== "none" && !seen.has(t)) {
+        seen.add(t);
+        transitions.push({ selector: getSelector(el), transition: t });
+      }
+    });
+    return transitions;
+  }
+
+  /* ── 37. Collect Canvas & WebGL Elements ── */
+  function collectCanvasElements() {
+    const canvases = [];
+    document.querySelectorAll("canvas").forEach((c) => {
+      canvases.push({
+        id: c.id || "",
+        width: c.width,
+        height: c.height,
+        classes: c.className || "",
+      });
+    });
+    return canvases;
+  }
+
   /* ── Helper: generate a CSS selector for an element ── */
   function getSelector(el) {
     if (el.id) return "#" + el.id;
@@ -1295,6 +1542,18 @@
       socialLinks: collectSocialLinks(),
       textContent: collectTextContent(),
       scrollBehaviors: collectScrollBehaviors(),
+      colorPalette: collectColorPalette(),
+      flexGridLayouts: collectFlexGridLayouts(),
+      linkMap: collectLinkMap(),
+      iconClasses: collectIconClasses(),
+      pageSize: collectPageSize(),
+      apiEndpoints: collectAPIEndpoints(),
+      storageKeys: collectStorageKeys(),
+      spacingScale: collectSpacingScale(),
+      socialPreview: collectSocialPreview(),
+      elementInventory: collectElementInventory(),
+      transitions: collectTransitions(),
+      canvasElements: collectCanvasElements(),
       seo: analyzeSEO(),
       performance: analyzePerformance(),
       security: analyzeSecurity(),

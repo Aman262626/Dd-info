@@ -245,6 +245,18 @@
           <label class="checkbox-label"><input type="checkbox" id="dl-text"> Text Content</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-schema"> Schema/JSON-LD</label>
           <label class="checkbox-label"><input type="checkbox" id="dl-scroll"> Scroll Info</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-colorpalette" checked> Color Palette</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-flexgrid" checked> Flex/Grid</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-linkmap" checked> Link Map</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-icons"> Icons</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-pagesize"> Page Size</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-apis"> API Endpoints</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-storage"> Storage Keys</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-spacing" checked> Spacing</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-ogpreview" checked> OG Preview</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-eleminventory"> DOM Inventory</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-transitions" checked> Transitions</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-canvas"> Canvas</label>
         </div>
         <div class="download-actions">
           <button id="select-all-btn" class="btn-small">Select All</button>
@@ -566,6 +578,113 @@
         </h2>
         <div id="data-attrs-content" class="collapsible-content" style="display:none;">
           <div id="data-attrs-list" class="meta-list"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Flex & Grid Layouts
+        </h2>
+        <div class="stats-grid stats-grid-2" style="margin-bottom:8px;">
+          <div class="stat-item">
+            <span class="stat-value" id="flexbox-count">0</span>
+            <span class="stat-label">Flexbox</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="grid-count">0</span>
+            <span class="stat-label">Grid</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Link Map
+        </h2>
+        <div class="stats-grid stats-grid-extra" style="margin-bottom:8px;">
+          <div class="stat-item">
+            <span class="stat-value" id="links-internal">0</span>
+            <span class="stat-label">Internal</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="links-external">0</span>
+            <span class="stat-label">External</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="links-anchors">0</span>
+            <span class="stat-label">Anchors</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="links-mailto">0</span>
+            <span class="stat-label">Email/Tel</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="icons-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Icon Classes
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="icons-content" class="collapsible-content" style="display:none;">
+          <div id="icons-list" class="tags-container"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Page Size
+        </h2>
+        <div class="stats-grid stats-grid-3">
+          <div class="stat-item">
+            <span class="stat-value" id="page-html-size">—</span>
+            <span class="stat-label">HTML</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="page-total-size">—</span>
+            <span class="stat-label">Total</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="page-nodes">0</span>
+            <span class="stat-label">DOM Nodes</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="spacing-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+          Spacing Scale
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="spacing-content" class="collapsible-content" style="display:none;">
+          <div id="spacing-list" class="meta-list"></div>
+        </div>
+      </section>
+
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="transitions-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Transitions
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="transitions-content" class="collapsible-content" style="display:none;">
+          <div id="transitions-list" class="meta-list"></div>
+        </div>
+      </section>
+
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="og-preview-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+          Social/OG Preview
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="og-preview-content" class="collapsible-content" style="display:none;">
+          <div id="og-preview-list" class="meta-list"></div>
         </div>
       </section>
     </div>

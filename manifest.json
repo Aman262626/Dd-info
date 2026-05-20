@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dd-info - Website Inspector & AI Assistant",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Analyze any website & download a complete clone — HTML, CSS, JS, fonts, SVGs, buttons, forms, animations, colors, and more as ZIP.",
   "permissions": ["activeTab", "scripting"],
   "action": {
