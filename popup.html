@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dd-info</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <img src="icons/icon48.png" alt="Dd-info" width="24" height="24">
+        <h1>Dd-info</h1>
+      </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="tab-info">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Info
+      </button>
+      <button class="tab" data-tab="tab-seo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        SEO
+      </button>
+      <button class="tab" data-tab="tab-perf">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Speed
+      </button>
+      <button class="tab" data-tab="tab-security">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Security
+      </button>
+      <button class="tab" data-tab="tab-more">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        More
+      </button>
+      <button class="tab" data-tab="tab-chat">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        AI
+      </button>
+    </nav>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Analyzing website...</p>
+    </div>
+
+    <div id="error" class="error" style="display:none;">
+      <p id="error-msg"></p>
+    </div>
+
+    <!-- ═══ TAB: INFO ═══ -->
+    <div id="tab-info" class="tab-content active" style="display:none;">
+      <!-- Site Basic Info -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Site Info
+        </h2>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="label">Title</span>
+            <span class="value" id="site-title">—</span>
+          </div>
+          <div class="info-item">
+            <span class="label">URL</span>
+            <span class="value url" id="site-url">—</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Description</span>
+            <span class="value" id="site-desc">—</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Language</span>
+            <span class="value" id="site-lang">—</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Charset</span>
+            <span class="value" id="site-charset">—</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Viewport</span>
+            <span class="value" id="site-viewport">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tech Stack -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Tech Stack
+        </h2>
+        <div id="tech-stack" class="tags-container">
+          <span class="tag empty">Analyzing...</span>
+        </div>
+      </section>
+
+      <!-- Fonts -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          Fonts
+        </h2>
+        <div id="fonts-list" class="tags-container">
+          <span class="tag empty">Analyzing...</span>
+        </div>
+      </section>
+
+      <!-- Colors -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.1-.7-.4-1-.3-.3-.4-.7-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-5.5-4.5-10-10-10z"/></svg>
+          Colors
+        </h2>
+        <div id="colors-list" class="colors-container">
+          <span class="tag empty">Analyzing...</span>
+        </div>
+      </section>
+
+      <!-- External Resources -->
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="resources-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          External Resources
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="resources-content" class="collapsible-content" style="display:none;">
+          <div id="resources-list" class="resources-container"></div>
+        </div>
+      </section>
+
+      <!-- Meta Tags -->
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="meta-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Meta Tags
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="meta-content" class="collapsible-content" style="display:none;">
+          <div id="meta-tags" class="meta-list"></div>
+        </div>
+      </section>
+
+      <!-- Page Stats -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Page Stats
+        </h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-value" id="stat-css">0</span>
+            <span class="stat-label">CSS</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-js">0</span>
+            <span class="stat-label">JS</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-img">0</span>
+            <span class="stat-label">Images</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="stat-links">0</span>
+            <span class="stat-label">Links</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Download Section -->
+      <section class="card download-card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Source Code
+        </h2>
+        <div class="download-options">
+          <label class="checkbox-label"><input type="checkbox" id="dl-html" checked> HTML</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-css" checked> CSS</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-js" checked> JS</label>
+          <label class="checkbox-label"><input type="checkbox" id="dl-images"> Images</label>
+        </div>
+        <button id="download-btn" class="btn-primary">Download ZIP</button>
+        <div id="download-status" class="download-status" style="display:none;"></div>
+      </section>
+
+    </div>
+
+    <!-- ═══ TAB: SEO ═══ -->
+    <div id="tab-seo" class="tab-content" style="display:none;">
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          SEO Score
+        </h2>
+        <div class="seo-score-wrap">
+          <div id="seo-score-circle" class="seo-score-circle">
+            <span id="seo-score-val">—</span>
+          </div>
+          <span id="seo-score-label" class="seo-score-label">Analyzing...</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          SEO Checks
+        </h2>
+        <div id="seo-checks" class="seo-checks-list">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Open Graph / Social
+        </h2>
+        <div id="og-tags" class="info-grid">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══ TAB: PERFORMANCE ═══ -->
+    <div id="tab-perf" class="tab-content" style="display:none;">
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Page Performance
+        </h2>
+        <div class="stats-grid stats-grid-2">
+          <div class="stat-item">
+            <span class="stat-value" id="perf-load-time">—</span>
+            <span class="stat-label">Load Time</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="perf-dom-ready">—</span>
+            <span class="stat-label">DOM Ready</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="perf-resources">—</span>
+            <span class="stat-label">Resources</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="perf-size">—</span>
+            <span class="stat-label">Page Size</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Resource Breakdown
+        </h2>
+        <div id="perf-breakdown" class="perf-bars">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Performance Tips
+        </h2>
+        <div id="perf-tips" class="seo-checks-list">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══ TAB: SECURITY ═══ -->
+    <div id="tab-security" class="tab-content" style="display:none;">
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security Score
+        </h2>
+        <div class="seo-score-wrap">
+          <div id="sec-score-circle" class="seo-score-circle">
+            <span id="sec-score-val">—</span>
+          </div>
+          <span id="sec-score-label" class="seo-score-label">Analyzing...</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Security Checks
+        </h2>
+        <div id="sec-checks" class="seo-checks-list">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Cookies & Trackers
+        </h2>
+        <div class="stats-grid stats-grid-3">
+          <div class="stat-item">
+            <span class="stat-value" id="cookie-count">0</span>
+            <span class="stat-label">Cookies</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="tracker-count">0</span>
+            <span class="stat-label">Trackers</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="storage-count">0</span>
+            <span class="stat-label">Storage</span>
+          </div>
+        </div>
+        <div id="tracker-list" class="tags-container" style="margin-top:8px;"></div>
+        <div id="cookie-list" class="collapsible-content" style="margin-top:8px;">
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══ TAB: MORE ═══ -->
+    <div id="tab-more" class="tab-content" style="display:none;">
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Accessibility Score
+        </h2>
+        <div class="seo-score-wrap">
+          <div id="a11y-score-circle" class="seo-score-circle">
+            <span id="a11y-score-val">—</span>
+          </div>
+          <span id="a11y-score-label" class="seo-score-label">Analyzing...</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Accessibility Checks
+        </h2>
+        <div id="a11y-checks" class="seo-checks-list">
+          <p class="muted">Analyzing...</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Link Analysis
+        </h2>
+        <div class="stats-grid stats-grid-3">
+          <div class="stat-item">
+            <span class="stat-value" id="link-internal">0</span>
+            <span class="stat-label">Internal</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="link-external">0</span>
+            <span class="stat-label">External</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="link-total">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+        </div>
+        <div id="external-domains" class="tags-container" style="margin-top:8px;"></div>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Page Structure
+        </h2>
+        <div class="stats-grid stats-grid-3">
+          <div class="stat-item">
+            <span class="stat-value" id="struct-elements">0</span>
+            <span class="stat-label">Elements</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="struct-iframes">0</span>
+            <span class="stat-label">Iframes</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="struct-forms">0</span>
+            <span class="stat-label">Forms</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card collapsible">
+        <h2 class="card-title toggle-btn" data-target="headings-content">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L6 22M18 2L18 22M6 12L18 12"/></svg>
+          Heading Hierarchy
+          <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </h2>
+        <div id="headings-content" class="collapsible-content" style="display:none;">
+          <div id="headings-list" class="meta-list"></div>
+        </div>
+      </section>
+
+      <!-- Screenshot moved here -->
+      <section class="card">
+        <h2 class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Screenshot
+        </h2>
+        <button id="screenshot-btn" class="btn-secondary">Capture Visible Page</button>
+        <div id="screenshot-status" class="download-status" style="display:none;"></div>
+      </section>
+    </div>
+
+    <!-- ═══ TAB: AI CHAT ═══ -->
+    <div id="tab-chat" class="tab-content" style="display:none;">
+      <div class="chat-container">
+        <div id="chat-messages" class="chat-messages">
+          <div class="chat-msg bot">
+            <div class="chat-avatar">AI</div>
+            <div class="chat-bubble">Namaste! Main Dd-info AI assistant hoon. Is website ke baare mein kuch bhi poochho — tech stack, design, SEO, ya kaise banaun. Main help karunga!</div>
+          </div>
+        </div>
+        <div class="chat-input-wrap">
+          <div class="chat-quick-actions">
+            <button class="quick-btn" data-prompt="Is website ka tech stack kya hai?">Tech Stack</button>
+            <button class="quick-btn" data-prompt="Is website jaisi website kaise banaun?">How to Build</button>
+            <button class="quick-btn" data-prompt="Is website ka SEO kaise improve karein?">SEO Tips</button>
+            <button class="quick-btn" data-prompt="Is website ka design analysis karo">Design</button>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Kuch bhi poochho..." autocomplete="off">
+            <button id="chat-send" class="chat-send-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="lib/jszip.min.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
