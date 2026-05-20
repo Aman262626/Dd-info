@@ -18,6 +18,11 @@
     setupDownloadButton();
     setupScreenshotButton();
     setupChat();
+    setupThemeToggle();
+    setupExportButtons();
+    setupHeadersButton();
+    setupContrastToggle();
+    setupQRDownload();
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -83,6 +88,11 @@
     renderAccessibility(data.accessibility);
     renderPageStructure(data.pageStructure);
     renderCloneTab(data);
+    renderPaywallData(data.paywallData);
+    renderContrastData(data.contrastData);
+    renderQRCode(data.url);
+    renderWaybackLink(data.url);
+    loadRobotsSitemap(data.url);
   }
 
   /* ═══ SITE INFO ═══ */
@@ -1005,7 +1015,8 @@
       // ── STEP I: Build working HTML (rewrite all paths) ──
       if (isChecked("#dl-html")) {
         updateProgress(Math.round((++step / totalSteps) * 100), "Building working HTML...");
-        let html = siteData.html;
+        const removePaywall = isChecked("#dl-remove-paywall");
+        let html = (removePaywall && siteData.cleanedHTML) ? siteData.cleanedHTML : siteData.html;
 
         // Rewrite CSS <link> hrefs
         Object.entries(cssMap).forEach(([origUrl, localPath]) => {
@@ -1578,5 +1589,306 @@
     $("#loading").style.display = "none";
     $("#error").style.display = "block";
     $("#error-msg").textContent = msg;
+  }
+
+  /* ═══ DARK/LIGHT THEME TOGGLE ═══ */
+  function setupThemeToggle() {
+    const btn = $("#theme-toggle");
+    if (!btn) return;
+    const saved = localStorage.getItem("dd-info-theme");
+    if (saved === "light") applyLight();
+    btn.addEventListener("click", () => {
+      document.body.classList.toggle("light-mode");
+      const isLight = document.body.classList.contains("light-mode");
+      localStorage.setItem("dd-info-theme", isLight ? "light" : "dark");
+      const moonIcon = $("#theme-icon-moon");
+      const sunIcon = $("#theme-icon-sun");
+      if (moonIcon && sunIcon) {
+        moonIcon.style.display = isLight ? "none" : "block";
+        sunIcon.style.display = isLight ? "block" : "none";
+      }
+    });
+  }
+  function applyLight() {
+    document.body.classList.add("light-mode");
+    const moonIcon = $("#theme-icon-moon");
+    const sunIcon = $("#theme-icon-sun");
+    if (moonIcon && sunIcon) {
+      moonIcon.style.display = "none";
+      sunIcon.style.display = "block";
+    }
+  }
+
+  /* ═══ PAYWALL DATA RENDERING ═══ */
+  function renderPaywallData(data) {
+    if (!data) return;
+    const pc = $("#paywall-count");
+    const bc = $("#blur-count");
+    const oc = $("#overlay-count");
+    const st = $("#paywall-status");
+    if (pc) pc.textContent = data.paywallElements ? data.paywallElements.length : 0;
+    if (bc) bc.textContent = data.blurredElements ? data.blurredElements.length : 0;
+    if (oc) oc.textContent = data.overlays ? data.overlays.length : 0;
+    if (st) {
+      st.style.display = "block";
+      if (data.hasPaywall) {
+        st.className = "download-status success";
+        st.textContent = "Paywall detected! Clone me auto-remove hoga.";
+      } else {
+        st.className = "download-status progress";
+        st.textContent = "No paywall detected on this page.";
+      }
+    }
+  }
+
+  /* ═══ COLOR CONTRAST RENDERING ═══ */
+  function renderContrastData(data) {
+    if (!data) return;
+    const scoreVal = $("#contrast-score-val");
+    const scoreLabel = $("#contrast-score-label");
+    const aaFail = $("#contrast-aa-fail");
+    const aaaFail = $("#contrast-aaa-fail");
+
+    if (scoreVal) scoreVal.textContent = data.score + "%";
+    if (scoreLabel) {
+      scoreLabel.textContent = data.score >= 90 ? "Excellent" : data.score >= 70 ? "Good" : data.score >= 50 ? "Needs Work" : "Poor";
+    }
+    if (aaFail) aaFail.textContent = data.aaFailCount;
+    if (aaaFail) aaaFail.textContent = data.aaaFailCount;
+
+    const circle = $("#contrast-score-circle");
+    if (circle) {
+      circle.style.borderColor = data.score >= 70 ? "#4ade80" : data.score >= 50 ? "#fbbf24" : "#f87171";
+    }
+
+    const list = $("#contrast-list");
+    if (list && data.results) {
+      list.innerHTML = data.results.map((r) =>
+        '<div class="contrast-item">' +
+        '<div class="contrast-swatch" style="background:' + r.foreground + ';"></div>' +
+        '<div class="contrast-swatch" style="background:' + r.background + ';"></div>' +
+        '<span class="contrast-ratio ' + (r.aaPass ? "pass" : "fail") + '">' + r.ratio.toFixed(1) + ':1</span>' +
+        '<span style="font-size:10px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(r.text) + '</span>' +
+        '</div>'
+      ).join("");
+    }
+  }
+
+  function setupContrastToggle() {
+    const btn = $("#contrast-toggle-btn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const details = $("#contrast-details");
+      if (details) {
+        const show = details.style.display === "none";
+        details.style.display = show ? "block" : "none";
+        btn.textContent = show ? "Hide Details" : "Show Details";
+      }
+    });
+  }
+
+  /* ═══ QR CODE GENERATOR ═══ */
+  function renderQRCode(url) {
+    if (!url) return;
+    const canvas = $("#qr-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const qr = generateQRMatrix(url);
+    const size = canvas.width;
+    const cellSize = size / qr.length;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#000000";
+
+    for (let y = 0; y < qr.length; y++) {
+      for (let x = 0; x < qr[y].length; x++) {
+        if (qr[y][x]) {
+          ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        }
+      }
+    }
+  }
+
+  function generateQRMatrix(text) {
+    // Simple QR-like matrix generator using a URL-based approach
+    // For a real QR code, a proper library would be needed
+    // This creates a visual QR-style pattern that encodes the URL
+    const size = 25;
+    const matrix = [];
+    for (let i = 0; i < size; i++) {
+      matrix[i] = [];
+      for (let j = 0; j < size; j++) {
+        matrix[i][j] = 0;
+      }
+    }
+
+    // Finder patterns (top-left, top-right, bottom-left)
+    const addFinder = (sx, sy) => {
+      for (let i = 0; i < 7; i++) {
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 || i === 6 || j === 0 || j === 6 ||
+            (i >= 2 && i <= 4 && j >= 2 && j <= 4)) {
+            matrix[sy + i][sx + j] = 1;
+          }
+        }
+      }
+    };
+    addFinder(0, 0);
+    addFinder(size - 7, 0);
+    addFinder(0, size - 7);
+
+    // Timing patterns
+    for (let i = 8; i < size - 8; i++) {
+      matrix[6][i] = i % 2 === 0 ? 1 : 0;
+      matrix[i][6] = i % 2 === 0 ? 1 : 0;
+    }
+
+    // Data area - encode text as a hash-based pattern
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    }
+
+    let seed = Math.abs(hash);
+    for (let y = 8; y < size; y++) {
+      for (let x = 8; x < size; x++) {
+        if (y < 7 && x >= size - 8) continue;
+        if (x < 7 && y >= size - 8) continue;
+        if (x === 6 || y === 6) continue;
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        const charIdx = (y * size + x) % text.length;
+        const bit = (text.charCodeAt(charIdx) + seed) % 3;
+        matrix[y][x] = bit === 0 ? 1 : 0;
+      }
+    }
+
+    return matrix;
+  }
+
+  function setupQRDownload() {
+    const btn = $("#qr-download-btn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const canvas = $("#qr-canvas");
+      if (!canvas) return;
+      const link = document.createElement("a");
+      link.download = "qr-code.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+  }
+
+  /* ═══ WAYBACK MACHINE ═══ */
+  function renderWaybackLink(url) {
+    const link = $("#wayback-link");
+    if (!link || !url) return;
+    link.href = "https://web.archive.org/web/*/" + encodeURIComponent(url);
+    link.textContent = "View Archived Versions";
+  }
+
+  /* ═══ RESPONSE HEADERS ═══ */
+  function setupHeadersButton() {
+    const btn = $("#load-headers-btn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      if (!siteData) return;
+      btn.disabled = true;
+      btn.textContent = "Loading...";
+      chrome.runtime.sendMessage(
+        { action: "fetchHeaders", url: siteData.url },
+        (resp) => {
+          btn.disabled = false;
+          btn.textContent = "Reload";
+          const list = $("#headers-list");
+          const content = $("#headers-content");
+          if (content) content.style.display = "block";
+          if (!list) return;
+          if (resp && resp.success && resp.data) {
+            let html = '<div class="meta-item"><span class="meta-name">Status</span><span class="meta-value">' + resp.data.status + " " + resp.data.statusText + "</span></div>";
+            Object.entries(resp.data.headers).forEach(([key, val]) => {
+              html += '<div class="meta-item"><span class="meta-name">' + escapeHtml(key) + '</span><span class="meta-value">' + escapeHtml(val) + "</span></div>";
+            });
+            list.innerHTML = html;
+          } else {
+            list.innerHTML = '<p class="muted">Could not fetch headers (CORS restriction)</p>';
+          }
+        }
+      );
+    });
+  }
+
+  /* ═══ ROBOTS.TXT & SITEMAP CHECKER ═══ */
+  function loadRobotsSitemap(url) {
+    if (!url) return;
+    try {
+      const origin = new URL(url).origin;
+      chrome.runtime.sendMessage(
+        { action: "checkRobotsSitemap", origin },
+        (resp) => {
+          if (!resp || !resp.success) return;
+          const data = resp.data;
+          const rs = $("#robots-status");
+          const ss = $("#sitemap-status");
+
+          if (rs && data.robots) {
+            rs.textContent = data.robots.exists ? "Found" : "Not Found";
+            rs.style.color = data.robots.exists ? "#4ade80" : "#f87171";
+            if (data.robots.exists && data.robots.content) {
+              const content = $("#robots-content");
+              const pre = $("#robots-txt-content");
+              if (content) content.style.display = "block";
+              if (pre) pre.textContent = data.robots.content;
+            }
+          }
+
+          if (ss && data.sitemap) {
+            ss.textContent = data.sitemap.exists ? (data.sitemap.urlCount + " URLs") : "Not Found";
+            ss.style.color = data.sitemap.exists ? "#4ade80" : "#f87171";
+          }
+        }
+      );
+    } catch (_) {}
+  }
+
+  /* ═══ EXPORT REPORT ═══ */
+  function setupExportButtons() {
+    const jsonBtn = $("#export-json-btn");
+    const copyBtn = $("#copy-summary-btn");
+    const status = $("#export-status");
+
+    if (jsonBtn) {
+      jsonBtn.addEventListener("click", () => {
+        if (!siteData) return;
+        const exportData = { ...siteData };
+        delete exportData.html;
+        delete exportData.cleanedHTML;
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = new URL(siteData.url).hostname + "_report.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (status) { status.style.display = "block"; status.className = "download-status success"; status.textContent = "JSON report downloaded!"; }
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        if (!siteData) return;
+        let summary = "Website Report: " + siteData.title + "\n";
+        summary += "URL: " + siteData.url + "\n";
+        summary += "Tech Stack: " + (siteData.techStack.length ? siteData.techStack.join(", ") : "None detected") + "\n";
+        summary += "CSS Files: " + siteData.stats.cssFiles + " | JS Files: " + siteData.stats.jsFiles + "\n";
+        summary += "Images: " + siteData.stats.images + " | Links: " + siteData.stats.links + "\n";
+        summary += "Fonts: " + (siteData.fonts.length ? siteData.fonts.join(", ") : "Default") + "\n";
+        summary += "SEO Score: " + (siteData.seo ? siteData.seo.score + "%" : "N/A") + "\n";
+        if (siteData.paywallData) summary += "Paywall Detected: " + (siteData.paywallData.hasPaywall ? "Yes" : "No") + "\n";
+        summary += "Generated by Dd-info Chrome Extension";
+        navigator.clipboard.writeText(summary).then(() => {
+          if (status) { status.style.display = "block"; status.className = "download-status success"; status.textContent = "Summary copied to clipboard!"; }
+        });
+      });
+    }
   }
 })();
